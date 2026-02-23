@@ -289,7 +289,6 @@ h1{
   user-select:none;
 }
 
-/* Shine overlay */
 .heart-shine{
   position:absolute;
   inset:0;
@@ -302,7 +301,6 @@ h1{
 }
 .heart-shine.off{ opacity:0; }
 
-/* Outline overlay final */
 .heart-outline{
   position:absolute;
   inset:0;
@@ -366,6 +364,58 @@ h1{
   display:none;
 }
 .music-status.show{ display:block; }
+
+/* POPUP */
+.popup{
+  position:fixed;
+  inset:0;
+  display:grid;
+  place-items:center;
+  background: rgba(0,0,0,0.25);
+  opacity:0;
+  pointer-events:none;
+  transition: opacity 240ms ease;
+  z-index:2000;
+}
+
+.popup.on{
+  opacity:1;
+  pointer-events:auto;
+}
+
+.popup-card{
+  width:min(320px, 86vw);
+  background:#ffffffea;
+  border:1px solid #ffffffc7;
+  border-radius:22px;
+  padding:18px 18px 14px;
+  text-align:center;
+  box-shadow: 0 18px 55px rgba(20, 10, 25, .22);
+  transform: scale(0.86);
+  opacity:0;
+  animation: popCard 520ms cubic-bezier(.2,.9,.2,1) forwards;
+}
+
+@keyframes popCard{
+  to{ transform: scale(1); opacity:1; }
+}
+
+.popup-title{
+  font-family:"Playfair Display", serif;
+  font-weight:600;
+  font-size:26px;
+  letter-spacing:.02em;
+  background: linear-gradient(90deg, var(--gold1), var(--gold2), var(--gold3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 10px 18px rgba(232,201,122,0.25));
+}
+
+.popup-sub{
+  margin-top:8px;
+  font-size:18px;
+}
 
 @media (max-width: 380px){
   h1{ font-size:34px; }

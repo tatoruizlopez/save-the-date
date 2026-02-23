@@ -12,9 +12,12 @@ const GLITTER_TWINKLES = 44;
 const SPARKLES_ON_SCRATCH = 2;
 
 // SHINNY (más exagerado)
-const SHINE_PERIOD_MS = 820;        // ✅ más rápido
-const SHINE_TWINKLES = 22;          // ✅ más twinkles animados
-const SHINE_BLING_EVERY_MS = 2200;  // ✅ bling extra cada X ms
+const SHINE_PERIOD_MS = 820;        // más rápido
+const SHINE_TWINKLES = 22;          // más twinkles animados
+const SHINE_BLING_EVERY_MS = 2200;  // bling extra cada X ms
+
+// POPUP tras completar
+const POPUP_DELAY_MS = 8000;        // ✅ 8 segundos
 // ======================
 
 // Intro
@@ -49,6 +52,11 @@ const hint = document.getElementById("hint");
 const resetBtn = document.getElementById("resetBtn");
 const musicBtn = document.getElementById("musicBtn");
 const musicStatus = document.getElementById("musicStatus");
+
+// Popup
+const popup = document.getElementById("popup");
+let popupTimer = null;
+let popupShown = false;
 
 // Audio
 const bgm = document.getElementById("bgm");
@@ -107,6 +115,24 @@ function setStatus(msg) {
 function cssVar(name, fallback) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return v || fallback;
+}
+
+/* POPUP */
+function showPopup() {
+  if (!popup || popupShown) return;
+  popupShown = true;
+  popup.classList.add("on");
+
+  // click fuera cierra
+  popup.addEventListener("click", hidePopup, { once: true });
+
+  // auto-cierra a los 6s para no molestar
+  setTimeout(hidePopup, 6000);
+}
+
+function hidePopup() {
+  if (!popup) return;
+  popup.classList.remove("on");
 }
 
 /* TYPEWRITER */
@@ -271,7 +297,7 @@ function drawTwinkleOn(ctx2d, x, y, r, alpha) {
   ctx2d.restore();
 }
 
-/* GOLD HEART DRAW */
+/* GOLD HEART */
 function drawGoldHeartOverlay() {
   hideReveal();
 
@@ -325,7 +351,6 @@ function drawGoldHeartOverlay() {
   }
   ctx.restore();
 
-  // static twinkles
   for (let i = 0; i < GLITTER_TWINKLES; i++) {
     const x = Math.random() * w;
     const y = Math.random() * h;
@@ -334,26 +359,8 @@ function drawGoldHeartOverlay() {
     drawTwinkleOn(ctx, x, y, rr, a);
   }
 
-  // bokeh
-  ctx.save();
-  ctx.globalAlpha = 0.12;
-  for (let i = 0; i < 22; i++) {
-    const x = Math.random() * w;
-    const y = Math.random() * h;
-    const rr = Math.random() * 22 + 10;
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, rr);
-    grad.addColorStop(0, "rgba(255,255,255,0.95)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x, y, rr, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-
   ctx.restore(); // clip
 
-  // border
   ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 3;
@@ -363,7 +370,7 @@ function drawGoldHeartOverlay() {
   showReveal();
 }
 
-/* OUTLINE FINAL */
+/* OUTLINE */
 function drawOutline() {
   const r = getRect();
   const w = r.width;
@@ -371,7 +378,6 @@ function drawOutline() {
 
   outlineCtx.clearRect(0, 0, w, h);
 
-  // brillo dorado gordito
   const grad = outlineCtx.createLinearGradient(0, 0, w, h);
   grad.addColorStop(0, cssVar("--gold1", "#f6e6b6"));
   grad.addColorStop(0.5, cssVar("--gold2", "#e8c97a"));
@@ -379,12 +385,11 @@ function drawOutline() {
 
   outlineCtx.save();
   outlineCtx.strokeStyle = grad;
-  outlineCtx.lineWidth = 10; // ✅ gordito
+  outlineCtx.lineWidth = 10;
   outlineCtx.lineJoin = "round";
   outlineCtx.lineCap = "round";
   outlineCtx.shadowColor = "rgba(255,255,255,0.85)";
   outlineCtx.shadowBlur = 10;
-
   outlineCtx.stroke(hp);
   outlineCtx.restore();
 
@@ -397,7 +402,7 @@ function initShineTwinkles(w, h) {
   shineTwinkles = [];
   let attempts = 0;
 
-  while (shineTwinkles.length < SHINE_TWINKLES && attempts < 1200) {
+  while (shineTwinkles.length < SHINE_TWINKLES && attempts < 1600) {
     attempts++;
     const x = Math.random() * w;
     const y = Math.random() * h;
@@ -441,7 +446,6 @@ function startShine() {
     shineCtx.save();
     shineCtx.clip(hp);
 
-    // sweep más intenso + rápido
     const prog = (ts % SHINE_PERIOD_MS) / SHINE_PERIOD_MS;
     const x0 = -w + (w * 2.4) * prog;
     const x1 = x0 + w * 1.05;
@@ -457,7 +461,6 @@ function startShine() {
     shineCtx.fillStyle = sweep;
     shineCtx.fillRect(0, 0, w, h);
 
-    // glow blob fuerte
     shineCtx.globalAlpha = 0.22;
     const gx = w * (0.20 + 0.60 * prog);
     const gy = h * 0.32;
@@ -470,18 +473,15 @@ function startShine() {
     shineCtx.arc(gx, gy, gr, 0, Math.PI * 2);
     shineCtx.fill();
 
-    // twinkles animados
     for (const t of shineTwinkles) {
       const a = Math.max(0, Math.sin(ts / 1000 * t.speed + t.phase));
       const alpha = 0.12 + Math.pow(a, 3) * 0.65;
       drawTwinkleOn(shineCtx, t.x, t.y, t.r, alpha);
     }
 
-    // BLING extra cada X ms
     if (ts - lastBlingTs > SHINE_BLING_EVERY_MS) {
       lastBlingTs = ts;
 
-      // un destello grande y 2-3 twinkles muy fuertes
       shineCtx.globalAlpha = 0.95;
       const bx = w * (0.25 + Math.random() * 0.50);
       const by = h * (0.28 + Math.random() * 0.48);
@@ -578,8 +578,11 @@ function maybeCelebrate() {
     const r = canvas.getBoundingClientRect();
     sparkleBurst(r.width * 0.50, r.height * 0.52, 26);
 
-    // ✅ mostrar outline dorado gordo
     if (!outlineOn) drawOutline();
+
+    // ✅ popup a los 3 segundos
+    clearTimeout(popupTimer);
+    popupTimer = setTimeout(showPopup, POPUP_DELAY_MS);
   }
 }
 
@@ -600,7 +603,7 @@ function scheduleMove(p) {
 }
 
 function startAt(p) {
-  stopShine(); // al empezar a rascar
+  stopShine();
   drawing = true;
   last = p;
   scratchDot(p);
@@ -666,17 +669,18 @@ function resetScratch() {
   scratchUnits = 0;
   celebrated = false;
 
+  clearTimeout(popupTimer);
+  popupShown = false;
+  hidePopup();
+
   outlineOn = false;
   outlineCanvas.classList.remove("on");
-  outlineCtx.clearRect(0, 0, getRect().width, getRect().height);
 
   hint.style.opacity = "1";
   hint.textContent = "Rasca el corazón dorado para descubrir la hora";
 
   fitCanvasAll();
   drawGoldHeartOverlay();
-
-  // ✅ vuelve el shiny al reset
   startShine();
 
   updateMusicBtn();
