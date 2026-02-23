@@ -12,41 +12,56 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="wrap">
-    <section class="card" aria-label="Save the Date">
 
-      <div class="headline">
-        <div class="small">SAVE THE DATE</div>
-        <h1>Cris <span class="amp">&amp;</span> Jose</h1>
-        <div class="meta">Granada</div>
-      </div>
+  <!-- INTRO (pantalla completa con foto) -->
+  <div id="intro" class="intro-screen" role="button" tabindex="0" aria-label="Intro. Toca para continuar">
+    <div class="intro-bg" aria-hidden="true"></div>
+    <div class="intro-gradient" aria-hidden="true"></div>
 
-      <div class="scratch-area">
-        <!-- Zona de rasca: corazón -->
-        <div class="heart-stage" id="heartStage" aria-label="Rasca el corazón">
-          <div class="heart-reveal">
-            <div class="heart-date">1 de Mayo 2026</div>
-            <div class="heart-time" id="hora">12:00</div>
-            <div class="heart-note">✨ ¡Nos casamos! ✨</div>
-          </div>
+    <div class="intro-content">
+      <div class="intro-kicker">Cris &amp; Jose</div>
+      <div class="intro-msg" id="introMsg">Tenemos que compartir contigo una cosa…</div>
+      <div class="intro-tap" id="introTap">Toca la pantalla</div>
+    </div>
+  </div>
 
-          <canvas id="scratch" class="heart-canvas"></canvas>
+  <!-- MAIN (rasca + save the date) -->
+  <main id="main" class="main-screen">
+    <section class="wrap">
+      <section class="card" aria-label="Save the Date">
+
+        <div class="headline">
+          <div class="small">SAVE THE DATE</div>
+          <h1>Cris <span class="amp">&amp;</span> Jose</h1>
+          <div class="meta">Granada</div>
         </div>
 
-        <div class="hint" id="hint">Rasca el corazón dorado para descubrir la hora</div>
+        <div class="scratch-area">
+          <div class="heart-stage" id="heartStage" aria-label="Rasca el corazón">
+            <div class="heart-reveal">
+              <div class="heart-date">1 de Mayo 2026</div>
+              <div class="heart-time" id="hora">12:00</div>
+              <div class="heart-note">✨ ¡Nos casamos! ✨</div>
+            </div>
+
+            <canvas id="scratch" class="heart-canvas"></canvas>
+          </div>
+
+          <div class="hint" id="hint">Rasca el corazón dorado para descubrir la hora</div>
+        </div>
+
+        <footer class="footer">
+          <span>Guárdate la fecha 💗</span>
+        </footer>
+      </section>
+
+      <div class="below">
+        <button class="btn" id="resetBtn" type="button">Reiniciar rasca</button>
+        <button class="btn" id="musicBtn" type="button">🎵 Música</button>
+        <span class="tip">Tip: en móvil, rasca con el dedo. En PC, con el ratón.</span>
+        <span class="music-status" id="musicStatus" aria-live="polite"></span>
       </div>
-
-      <footer class="footer">
-        <span>Guárdate la fecha 💗</span>
-      </footer>
     </section>
-
-    <div class="below">
-      <button class="btn" id="resetBtn" type="button">Reiniciar rasca</button>
-      <button class="btn" id="musicBtn" type="button">🎵 Música</button>
-      <span class="tip">Tip: en móvil, rasca con el dedo. En PC, con el ratón.</span>
-      <span class="music-status" id="musicStatus" aria-live="polite"></span>
-    </div>
   </main>
 
   <!-- Música (sube tu audio a /assets/song.mp3) -->

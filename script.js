@@ -4,6 +4,12 @@ const BRUSH = 32;
 const CELEBRATE_AFTER = 220;
 // ======================
 
+// Intro elements
+const intro = document.getElementById("intro");
+const introMsg = document.getElementById("introMsg");
+const introTap = document.getElementById("introTap");
+
+// Main elements
 const stage = document.getElementById("heartStage");
 const canvas = document.getElementById("scratch");
 const ctx = canvas.getContext("2d");
@@ -15,6 +21,7 @@ const bgm = document.getElementById("bgm");
 
 document.getElementById("hora").textContent = HORA;
 
+// Scratch state
 let hp = null;
 let drawing = false;
 let last = null;
@@ -27,8 +34,12 @@ let touchActive = false;
 let rafPending = false;
 let pendingPoint = null;
 
+// Audio state
 let audioPrimed = false;
 let statusTimer = null;
+
+// Ensure scratch init runs only once (after intro dismissed)
+let scratchReady = false;
 
 function setStatus(msg) {
   if (!musicStatus) return;
@@ -273,7 +284,7 @@ bgm?.addEventListener("error", () => {
 bgm?.addEventListener("play", updateMusicBtn);
 bgm?.addEventListener("pause", updateMusicBtn);
 
-// ===== Pointer + Touch fallback =====
+// ===== Scratch input handlers =====
 function onPointerDown(e) {
   if (touchActive) return;
   if (activePointerId !== null) return;
@@ -281,14 +292,14 @@ function onPointerDown(e) {
   activePointerId = e.pointerId;
   try { canvas.setPointerCapture(activePointerId); } catch {}
 
-  tryStartMusic(false);
+  // gesto usuario: podemos intentar arrancar música si quiere
+  // (NO forzamos, por eso está en el botón)
   startAt(posFromClient(e.clientX, e.clientY));
 }
 
 function onPointerMove(e) {
   if (touchActive) return;
   if (!drawing || e.pointerId !== activePointerId) return;
-
   scheduleMove(posFromClient(e.clientX, e.clientY));
 }
 
@@ -304,8 +315,6 @@ function onPointerUp(e) {
 function onTouchStart(e) {
   touchActive = true;
   e.preventDefault();
-
-  tryStartMusic(false);
 
   const t = e.touches[0];
   if (!t) return;
@@ -327,20 +336,7 @@ function onTouchEnd(e) {
   endDraw();
 }
 
-canvas.addEventListener("pointerdown", onPointerDown);
-canvas.addEventListener("pointermove", onPointerMove);
-canvas.addEventListener("pointerup", onPointerUp);
-canvas.addEventListener("pointercancel", onPointerUp);
-
-canvas.addEventListener("touchstart", onTouchStart, { passive: false });
-canvas.addEventListener("touchmove", onTouchMove, { passive: false });
-canvas.addEventListener("touchend", onTouchEnd, { passive: false });
-canvas.addEventListener("touchcancel", onTouchEnd, { passive: false });
-
-resetBtn.addEventListener("click", reset);
-window.addEventListener("resize", reset);
-
-function reset() {
+function resetScratch() {
   touchActive = false;
   activePointerId = null;
 
@@ -356,4 +352,49 @@ function reset() {
   setStatus("");
 }
 
-reset();
+// Init scratch only when main is visible (after intro)
+function setupScratchOnce() {
+  if (scratchReady) return;
+  scratchReady = true;
+
+  canvas.addEventListener("pointerdown", onPointerDown);
+  canvas.addEventListener("pointermove", onPointerMove);
+  canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointercancel", onPointerUp);
+
+  canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+  canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+  canvas.addEventListener("touchend", onTouchEnd, { passive: false });
+  canvas.addEventListener("touchcancel", onTouchEnd, { passive: false });
+
+  resetBtn.addEventListener("click", resetScratch);
+  window.addEventListener("resize", resetScratch);
+
+  resetScratch();
+}
+
+// ===== Intro flow =====
+function showIntroTexts() {
+  setTimeout(() => introMsg?.classList.add("show"), 1600);
+  setTimeout(() => introTap?.classList.add("show"), 2600);
+}
+
+function enterMain() {
+  // primera interacción: es gesto válido (por si quieres iniciar música aquí en vez de botón)
+  // tryStartMusic(false);
+
+  intro.classList.add("intro-dismiss");
+  setTimeout(() => {
+    intro.style.display = "none";
+    // ahora que el layout es estable, iniciamos el rasca
+    requestAnimationFrame(() => setupScratchOnce());
+  }, 520);
+}
+
+intro?.addEventListener("click", enterMain);
+intro?.addEventListener("touchend", (e) => { e.preventDefault(); enterMain(); }, { passive: false });
+intro?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") enterMain();
+});
+
+showIntroTexts();
