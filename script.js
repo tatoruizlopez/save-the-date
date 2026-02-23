@@ -12,12 +12,12 @@ const GLITTER_TWINKLES = 44;
 const SPARKLES_ON_SCRATCH = 2;
 
 // SHINNY (más exagerado)
-const SHINE_PERIOD_MS = 820;        // más rápido
-const SHINE_TWINKLES = 22;          // más twinkles animados
-const SHINE_BLING_EVERY_MS = 2200;  // bling extra cada X ms
+const SHINE_PERIOD_MS = 820;
+const SHINE_TWINKLES = 22;
+const SHINE_BLING_EVERY_MS = 2200;
 
 // POPUP tras completar
-const POPUP_DELAY_MS = 8000;        // ✅ 8 segundos
+const POPUP_DELAY_MS = 7000;
 // ======================
 
 // Intro
@@ -122,11 +122,7 @@ function showPopup() {
   if (!popup || popupShown) return;
   popupShown = true;
   popup.classList.add("on");
-
-  // click fuera cierra
   popup.addEventListener("click", hidePopup, { once: true });
-
-  // auto-cierra a los 6s para no molestar
   setTimeout(hidePopup, 6000);
 }
 
@@ -318,7 +314,6 @@ function drawGoldHeartOverlay() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  // foil stripes
   ctx.save();
   ctx.globalAlpha = 0.16;
   ctx.translate(w * 0.12, -h * 0.08);
@@ -333,7 +328,6 @@ function drawGoldHeartOverlay() {
   }
   ctx.restore();
 
-  // dust
   ctx.save();
   ctx.globalAlpha = 0.25;
   for (let i = 0; i < GLITTER_DUST; i++) {
@@ -359,7 +353,7 @@ function drawGoldHeartOverlay() {
     drawTwinkleOn(ctx, x, y, rr, a);
   }
 
-  ctx.restore(); // clip
+  ctx.restore();
 
   ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
@@ -580,7 +574,6 @@ function maybeCelebrate() {
 
     if (!outlineOn) drawOutline();
 
-    // ✅ popup a los 3 segundos
     clearTimeout(popupTimer);
     popupTimer = setTimeout(showPopup, POPUP_DELAY_MS);
   }
