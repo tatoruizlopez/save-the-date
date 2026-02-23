@@ -51,6 +51,13 @@ body{
   transform: scale(1.02);
   animation: kenburns 10s ease-in-out forwards;
   filter: saturate(1.05) contrast(1.02);
+  transition: filter 260ms ease, transform 260ms ease;
+}
+
+/* Paso 2: blur + zoom rápido */
+.intro-screen.step2 .intro-bg{
+  filter: blur(9px) saturate(1.05) contrast(1.02);
+  transform: scale(1.14);
 }
 
 @keyframes kenburns{
@@ -114,7 +121,6 @@ body{
   50%{ transform: translateY(-6px); }
 }
 
-/* Mensajes */
 .intro-msg{
   opacity:0;
   transform: translateY(10px);
@@ -154,7 +160,6 @@ body{
   transform: translateY(0px) !important;
 }
 
-/* caret typewriter */
 .caret{
   display:inline-block;
   margin-left:2px;
@@ -210,7 +215,6 @@ h1{
 }
 
 .amp{ font-family:"Playfair Display", serif; font-weight:500; }
-
 .meta{ color:var(--muted); font-weight:400; }
 
 .scratch-area{
@@ -229,11 +233,21 @@ h1{
   position:absolute;
   left:50%;
   top:50%;
-  transform:translate(-50%, -50%);
+  transform:translate(-50%, -50%) scale(0.92);
   width:min(380px, 90%);
   aspect-ratio: 1 / 0.92;
   display:grid;
   place-items:center;
+  opacity:0;
+}
+
+/* Al entrar en main, animación pop */
+.heart-stage.pop{
+  animation: popin 520ms cubic-bezier(.2,.9,.2,1) forwards;
+}
+@keyframes popin{
+  from{ opacity:0; transform: translate(-50%, -50%) scale(0.86); }
+  to{ opacity:1; transform: translate(-50%, -50%) scale(1); }
 }
 
 .heart-reveal{

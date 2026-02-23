@@ -20,7 +20,7 @@ const type2 = document.getElementById("type2");
 const caret1 = document.getElementById("caret1");
 const caret2 = document.getElementById("caret2");
 
-let introStep = 0; // 0->toca para arrancar música + paso2, 1->toca para flash + whoosh + entrar
+let introStep = 0;
 
 // Main
 const stage = document.getElementById("heartStage");
@@ -78,12 +78,9 @@ function cssVar(name, fallback) {
   return v || fallback;
 }
 
-/* =========================
-   TYPEWRITER
-   ========================= */
+/* TYPEWRITER */
 function typewriter(el, caretEl, text, speed = 26) {
   if (!el) return Promise.resolve();
-
   el.textContent = "";
   if (caretEl) caretEl.style.display = "inline-block";
 
@@ -92,23 +89,17 @@ function typewriter(el, caretEl, text, speed = 26) {
     const tick = () => {
       el.textContent = text.slice(0, i);
       i++;
-      if (i <= text.length) {
-        setTimeout(tick, speed);
-      } else {
-        // deja el caret un instante y luego lo apaga (más limpio)
-        setTimeout(() => {
-          if (caretEl) caretEl.style.display = "none";
-          resolve();
-        }, 650);
-      }
+      if (i <= text.length) setTimeout(tick, speed);
+      else setTimeout(() => {
+        if (caretEl) caretEl.style.display = "none";
+        resolve();
+      }, 650);
     };
     tick();
   });
 }
 
-/* =========================
-   AUDIO
-   ========================= */
+/* AUDIO */
 function updateMusicBtn() {
   if (!bgm || !musicBtn) return;
   musicBtn.textContent = bgm.paused ? "🎵 Música" : "🔊 Música";
@@ -130,8 +121,8 @@ async function startMusicFromGesture() {
 
   audioStarted = true;
   bgm.volume = 0.0;
-
   try { bgm.load(); } catch {}
+
   try {
     await bgm.play();
     fadeVolume(0.85, 650);
@@ -144,24 +135,17 @@ async function startMusicFromGesture() {
 
 async function playWhoosh() {
   if (!whoosh) return;
-
-  // si no existe el archivo, no rompe: simplemente no sonará
-  // (en ese caso el evento 'error' saltará)
   try {
     whoosh.currentTime = 0;
     whoosh.volume = 0.9;
     await whoosh.play();
   } catch {
-    // ignore
+    // ignore (si no hay whoosh o está bloqueado)
   }
 }
 
-/* =========================
-   SCRATCH
-   ========================= */
-function getRect() {
-  return stage.getBoundingClientRect();
-}
+/* SCRATCH */
+function getRect() { return stage.getBoundingClientRect(); }
 
 function fitCanvas() {
   const r = getRect();
@@ -331,7 +315,7 @@ function endDraw() {
   rafPending = false;
 }
 
-// Input events
+/* INPUT SCRATCH */
 function onPointerDown(e) {
   if (touchActive) return;
   if (activePointerId !== null) return;
@@ -392,17 +376,13 @@ function resetScratch() {
   setStatus("");
 }
 
-/* =========================
-   INTRO FLOW
-   ========================= */
+/* INTRO FLOW */
 async function toStep0Initial() {
-  // Arranque: typewriter del texto 1
   introMsg1.classList.add("show");
   await typewriter(type1, caret1, TEXT_STEP1, 22);
 }
 
 async function toStep1() {
-  // Primer toque: música + cambia texto 2 con typewriter + muestra “Toca la pantalla”
   await startMusicFromGesture();
 
   introMsg1.classList.remove("show");
@@ -410,23 +390,31 @@ async function toStep1() {
   introTap.classList.add("show");
 
   await typewriter(type2, caret2, TEXT_STEP2, 22);
-
   introStep = 1;
 }
 
 async function toStep2() {
-  // Segundo toque: flash + whoosh + salir
+  // blur+zoom rápido en el fondo
+  intro.classList.add("step2");
+
+  // flash
   if (flash) {
     flash.classList.remove("on");
-    // reflow
     void flash.offsetWidth;
     flash.classList.add("on");
   }
 
+  // whoosh
   await playWhoosh();
 
+  // salir
   intro.classList.add("intro-dismiss");
   setTimeout(() => { intro.style.display = "none"; }, 520);
+
+  // animación pop del corazón al entrar
+  stage.classList.remove("pop");
+  void stage.offsetWidth;
+  stage.classList.add("pop");
 }
 
 function onIntroTap(e) {
@@ -435,21 +423,19 @@ function onIntroTap(e) {
   else toStep2();
 }
 
-/* =========================
-   SETUP
-   ========================= */
+/* SETUP */
 function setup() {
-  // Pre-dibuja rasca detrás de la intro (para entrar instantáneo)
+  // pre-dibuja el rasca detrás de la intro
   requestAnimationFrame(() => resetScratch());
 
-  // Bind intro
+  // bind intro
   intro.addEventListener("click", onIntroTap);
   intro.addEventListener("touchend", onIntroTap, { passive: false });
   intro.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") onIntroTap(e);
   });
 
-  // Scratch events
+  // scratch
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
@@ -474,7 +460,6 @@ function setup() {
     }
   });
 
-  // Arranca el mensaje 1 animado sin toque
   toStep0Initial();
   updateMusicBtn();
 }
