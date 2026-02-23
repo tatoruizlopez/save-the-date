@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Save the Date — Cris & Jose</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Tipografía elegante + una sans limpia -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <section class="card" aria-label="Save the Date">
+      <div class="headline">
+        <div class="small">Save the Date</div>
+        <h1>Cris <span class="amp">&amp;</span> Jose</h1>
+        <div class="meta">Granada</div>
+      </div>
+
+      <div class="scratch-area">
+        <!-- Debajo: lo revelado -->
+        <div class="reveal" id="reveal">
+          <div class="reveal-line">1 de Mayo 2026</div>
+          <div class="reveal-line reveal-time" id="hora">Hora: 18:00</div>
+          <div class="reveal-hint">✨ ¡Nos casamos! ✨</div>
+        </div>
+
+        <!-- Encima: canvas “rascable” -->
+        <canvas id="scratch" class="scratch-canvas" aria-label="Rasca el corazón"></canvas>
+
+        <div class="hint" id="hint">Rasca el corazón dorado para descubrir la hora</div>
+      </div>
+
+      <footer class="footer">
+        <span>Guárdate la fecha 💗</span>
+      </footer>
+    </section>
+
+    <div class="below">
+      <button class="btn" id="resetBtn" type="button">Reiniciar rasca</button>
+      <span class="tip">Tip: en móvil, rasca con el dedo. En PC, con el ratón.</span>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
