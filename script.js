@@ -1,8 +1,8 @@
-// ======= CONFIG RÁPIDA =======
+// ======= CONFIG =======
 const HORA = "12:00";
-const BRUSH = 38;              // grosor del rasca
-const FINISH_AFTER = 220;      // “cantidad” de rasca para completarlo
-// =============================
+const BRUSH = 38;               // grosor del rasca
+const CELEBRATE_AFTER = 220;    // umbral para lanzar confetti (pero NO bloquea seguir rascando)
+// ======================
 
 const canvas = document.getElementById("scratch");
 const ctx = canvas.getContext("2d");
@@ -10,11 +10,11 @@ const hint = document.getElementById("hint");
 const resetBtn = document.getElementById("resetBtn");
 document.getElementById("hora").textContent = HORA;
 
-let hp = null;                 // Path2D corazón cacheado
+let hp = null;                  // Path2D corazón cacheado
 let drawing = false;
 let last = null;
 let scratchUnits = 0;
-let finished = false;
+let celebrated = false;
 let activePointerId = null;
 
 function cssVar(name, fallback) {
@@ -32,13 +32,13 @@ function fitCanvas() {
   canvas.width = Math.round(r.width * dpr);
   canvas.height = Math.round(r.height * dpr);
 
-  // Dibujar en “px CSS”
+  // Dibujar en coordenadas CSS
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 function buildHeartPath(w, h) {
   const cx = w * 0.5;
-  const cy = h * 0.46;                 // <-- IMPORTANTE (coincide con CSS top:46%)
+  const cy = h * 0.46;                 // coincide con CSS top:46%
   const size = Math.min(w, h) * 0.30;  // tamaño del corazón
 
   const p = new Path2D();
@@ -58,7 +58,7 @@ function drawGoldHeartOverlay() {
 
   hp = buildHeartPath(w, h);
 
-  // Solo dibujamos DENTRO del corazón (fuera es transparente => área real de rasca = corazón)
+  // Dibuja dorado SOLO dentro del corazón (fuera = transparente)
   ctx.save();
   ctx.clip(hp);
 
@@ -70,7 +70,7 @@ function drawGoldHeartOverlay() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  // Textura “foil”
+  // Textura foil suave
   ctx.globalAlpha = 0.22;
   for (let i = 0; i < 130; i++) {
     const x = Math.random() * w;
@@ -85,7 +85,7 @@ function drawGoldHeartOverlay() {
 
   ctx.restore();
 
-  // Borde
+  // Borde del corazón
   ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 3;
@@ -99,10 +99,9 @@ function posFromEvent(e) {
 }
 
 function scratchStroke(a, b) {
-  if (finished) return;
-
+  // IMPORTANTE: NO BLOQUEAMOS nunca. Siempre se puede seguir rascando.
   ctx.save();
-  ctx.clip(hp); // borra solo dentro del corazón
+  ctx.clip(hp);
   ctx.globalCompositeOperation = "destination-out";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -120,8 +119,6 @@ function scratchStroke(a, b) {
 }
 
 function scratchDot(p) {
-  if (finished) return;
-
   ctx.save();
   ctx.clip(hp);
   ctx.globalCompositeOperation = "destination-out";
@@ -133,13 +130,13 @@ function scratchDot(p) {
   scratchUnits += 10;
 }
 
-function maybeFinish() {
-  if (finished) return;
-
+function maybeCelebrate() {
+  // Oculta hint pronto
   if (scratchUnits > 40) hint.style.opacity = "0";
 
-  if (scratchUnits >= FINISH_AFTER) {
-    finished = true;
+  // Lanza confetti una vez, pero deja seguir rascando siempre
+  if (!celebrated && scratchUnits >= CELEBRATE_AFTER) {
+    celebrated = true;
     hint.style.opacity = "0";
     burstHearts();
   }
@@ -176,7 +173,7 @@ function reset() {
   drawing = false;
   last = null;
   scratchUnits = 0;
-  finished = false;
+  celebrated = false;
 
   hint.style.opacity = "1";
   hint.textContent = "Rasca el corazón dorado para descubrir la hora";
@@ -185,7 +182,7 @@ function reset() {
   drawGoldHeartOverlay();
 }
 
-// ===== Pointer Events (iPhone + PC fluido) =====
+// ===== Pointer Events =====
 function onPointerDown(e) {
   if (activePointerId !== null) return;
 
@@ -197,7 +194,7 @@ function onPointerDown(e) {
   last = p;
 
   scratchDot(p);
-  maybeFinish();
+  maybeCelebrate();
 }
 
 let rafPending = false;
@@ -217,7 +214,7 @@ function onPointerMove(e) {
     scratchStroke(last, pendingPoint);
     last = pendingPoint;
     pendingPoint = null;
-    maybeFinish();
+    maybeCelebrate();
   });
 }
 
@@ -231,7 +228,6 @@ function onPointerUp(e) {
   activePointerId = null;
 }
 
-// Eventos
 canvas.addEventListener("pointerdown", onPointerDown);
 canvas.addEventListener("pointermove", onPointerMove);
 canvas.addEventListener("pointerup", onPointerUp);

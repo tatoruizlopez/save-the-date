@@ -45,7 +45,7 @@ body{
 
 .headline{
   text-align:center;
-  margin-bottom:16px;
+  margin-bottom:14px;
 }
 .small{
   letter-spacing:.22em;
@@ -53,19 +53,10 @@ body{
   font-size:12px;
   color:var(--muted);
 }
-h1{
-  font-family: "Playfair Display", serif;
-  font-weight:600;
-  font-size:38px;
-  margin:8px 0 6px;
-}
+
 .amp{
   font-family: "Playfair Display", serif;
   font-weight:500;
-}
-.meta{
-  color:var(--muted);
-  font-weight:400;
 }
 
 .scratch-area{
@@ -88,46 +79,52 @@ h1{
   padding:0;
 }
 
-/* Contenido centrado EN el corazón:
-   el corazón está centrado aprox en y=46% en JS */
+/* Contenido centrado EN el corazón (coincide con cy = 46% en JS) */
 .reveal-inner{
   position:absolute;
   left:50%;
   top:46%;
   transform:translate(-50%, -50%);
-  width:78%;
+  width:70%;
   text-align:center;
-  pointer-events:none; /* el dedo debe ir al canvas, no al texto */
+  pointer-events:none;
 }
 
 .reveal-names{
   font-family:"Playfair Display", serif;
   font-weight:600;
-  font-size:30px;
+  font-size:28px;
   line-height:1.05;
+  margin-bottom:10px;
 }
 
-.reveal-details{
-  margin-top:10px;
+.reveal-line{
   font-family: Inter, sans-serif;
-  font-size:14px;
   color:#3a2a44;
   letter-spacing:.02em;
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-  justify-content:center;
-  align-items:center;
 }
 
-.reveal-details .sep{
+.reveal-place{
+  font-size:14px;
+  font-weight:500;
+  opacity:.92;
+  margin-bottom:6px;
+}
+
+.reveal-when{
+  font-size:14px;
+  font-weight:500;
+}
+
+.sep{
   opacity:.55;
+  margin:0 6px;
 }
 
 .reveal-hint{
   margin-top:12px;
   color:var(--muted);
-  font-size:14px;
+  font-size:13px;
   letter-spacing:.02em;
 }
 
@@ -190,8 +187,7 @@ h1{
 }
 
 @media (max-width: 380px){
-  .reveal-inner{ width:84%; }
-  h1{ font-size:34px; }
-  .reveal-names{ font-size:27px; }
-  .reveal-details{ font-size:13px; }
+  .reveal-inner{ width:78%; }
+  .reveal-names{ font-size:26px; }
+  .reveal-place, .reveal-when{ font-size:13px; }
 }
