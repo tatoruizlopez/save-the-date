@@ -2,15 +2,25 @@
 const HORA = "12:00";
 const BRUSH = 32;
 const CELEBRATE_AFTER = 220;
+
+const TEXT_STEP1 = "Pulsa aquí, somos Cris, Elián y Jose.";
+const TEXT_STEP2 = "Tenemos que compartir contigo una cosa…";
 // ======================
 
-// Intro state
+// Intro
 const intro = document.getElementById("intro");
+const flash = document.getElementById("flash");
+
 const introMsg1 = document.getElementById("introMsg1");
 const introMsg2 = document.getElementById("introMsg2");
 const introTap = document.getElementById("introTap");
 
-let introStep = 0; // 0=espera primer toque (arranca música), 1=espera segundo toque (entra main)
+const type1 = document.getElementById("type1");
+const type2 = document.getElementById("type2");
+const caret1 = document.getElementById("caret1");
+const caret2 = document.getElementById("caret2");
+
+let introStep = 0; // 0->toca para arrancar música + paso2, 1->toca para flash + whoosh + entrar
 
 // Main
 const stage = document.getElementById("heartStage");
@@ -21,7 +31,10 @@ const hint = document.getElementById("hint");
 const resetBtn = document.getElementById("resetBtn");
 const musicBtn = document.getElementById("musicBtn");
 const musicStatus = document.getElementById("musicStatus");
+
+// Audio
 const bgm = document.getElementById("bgm");
+const whoosh = document.getElementById("whoosh");
 
 document.getElementById("hora").textContent = HORA;
 
@@ -38,7 +51,7 @@ let touchActive = false;
 let rafPending = false;
 let pendingPoint = null;
 
-// Music
+// Music state
 let statusTimer = null;
 let audioStarted = false;
 
@@ -65,6 +78,87 @@ function cssVar(name, fallback) {
   return v || fallback;
 }
 
+/* =========================
+   TYPEWRITER
+   ========================= */
+function typewriter(el, caretEl, text, speed = 26) {
+  if (!el) return Promise.resolve();
+
+  el.textContent = "";
+  if (caretEl) caretEl.style.display = "inline-block";
+
+  return new Promise((resolve) => {
+    let i = 0;
+    const tick = () => {
+      el.textContent = text.slice(0, i);
+      i++;
+      if (i <= text.length) {
+        setTimeout(tick, speed);
+      } else {
+        // deja el caret un instante y luego lo apaga (más limpio)
+        setTimeout(() => {
+          if (caretEl) caretEl.style.display = "none";
+          resolve();
+        }, 650);
+      }
+    };
+    tick();
+  });
+}
+
+/* =========================
+   AUDIO
+   ========================= */
+function updateMusicBtn() {
+  if (!bgm || !musicBtn) return;
+  musicBtn.textContent = bgm.paused ? "🎵 Música" : "🔊 Música";
+}
+
+function fadeVolume(to = 0.85, ms = 650) {
+  const from = bgm.volume ?? 0;
+  const start = performance.now();
+  function step(t) {
+    const k = Math.min(1, (t - start) / ms);
+    bgm.volume = from + (to - from) * k;
+    if (k < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+async function startMusicFromGesture() {
+  if (!bgm || audioStarted) return;
+
+  audioStarted = true;
+  bgm.volume = 0.0;
+
+  try { bgm.load(); } catch {}
+  try {
+    await bgm.play();
+    fadeVolume(0.85, 650);
+  } catch {
+    setStatus("El navegador bloqueó el audio. Revisa: sitio no silenciado / permiso de sonido.");
+    audioStarted = false;
+  }
+  updateMusicBtn();
+}
+
+async function playWhoosh() {
+  if (!whoosh) return;
+
+  // si no existe el archivo, no rompe: simplemente no sonará
+  // (en ese caso el evento 'error' saltará)
+  try {
+    whoosh.currentTime = 0;
+    whoosh.volume = 0.9;
+    await whoosh.play();
+  } catch {
+    // ignore
+  }
+}
+
+/* =========================
+   SCRATCH
+   ========================= */
 function getRect() {
   return stage.getBoundingClientRect();
 }
@@ -237,41 +331,7 @@ function endDraw() {
   rafPending = false;
 }
 
-// Music helpers
-function updateMusicBtn() {
-  if (!bgm || !musicBtn) return;
-  musicBtn.textContent = bgm.paused ? "🎵 Música" : "🔊 Música";
-}
-
-function fadeVolume(to = 0.85, ms = 650) {
-  const from = bgm.volume ?? 0;
-  const start = performance.now();
-  function step(t) {
-    const k = Math.min(1, (t - start) / ms);
-    bgm.volume = from + (to - from) * k;
-    if (k < 1) requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
-}
-
-async function startMusicFromGesture() {
-  if (!bgm || audioStarted) return;
-
-  audioStarted = true;
-  bgm.volume = 0.0;
-  try { bgm.load(); } catch {}
-
-  try {
-    await bgm.play();
-    fadeVolume(0.85, 650);
-  } catch {
-    setStatus("El navegador bloqueó el audio. Revisa: sitio no silenciado / permiso de sonido.");
-    audioStarted = false;
-  }
-  updateMusicBtn();
-}
-
-// Input events for scratch
+// Input events
 function onPointerDown(e) {
   if (touchActive) return;
   if (activePointerId !== null) return;
@@ -332,20 +392,39 @@ function resetScratch() {
   setStatus("");
 }
 
-// Intro flow (2 steps)
-function toStep1() {
-  // Primer toque: arranca música y cambia texto
-  startMusicFromGesture();
+/* =========================
+   INTRO FLOW
+   ========================= */
+async function toStep0Initial() {
+  // Arranque: typewriter del texto 1
+  introMsg1.classList.add("show");
+  await typewriter(type1, caret1, TEXT_STEP1, 22);
+}
+
+async function toStep1() {
+  // Primer toque: música + cambia texto 2 con typewriter + muestra “Toca la pantalla”
+  await startMusicFromGesture();
 
   introMsg1.classList.remove("show");
   introMsg2.classList.add("show");
   introTap.classList.add("show");
 
+  await typewriter(type2, caret2, TEXT_STEP2, 22);
+
   introStep = 1;
 }
 
-function toStep2() {
-  // Segundo toque: entra al Save the Date
+async function toStep2() {
+  // Segundo toque: flash + whoosh + salir
+  if (flash) {
+    flash.classList.remove("on");
+    // reflow
+    void flash.offsetWidth;
+    flash.classList.add("on");
+  }
+
+  await playWhoosh();
+
   intro.classList.add("intro-dismiss");
   setTimeout(() => { intro.style.display = "none"; }, 520);
 }
@@ -356,18 +435,21 @@ function onIntroTap(e) {
   else toStep2();
 }
 
-// Bind intro
-intro.addEventListener("click", onIntroTap);
-intro.addEventListener("touchend", onIntroTap, { passive: false });
-intro.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") onIntroTap(e);
-});
-
-// Setup scratch immediately (se pre-dibuja detrás de la intro)
+/* =========================
+   SETUP
+   ========================= */
 function setup() {
-  // Pre-dibuja (para que no “tarde” al entrar)
+  // Pre-dibuja rasca detrás de la intro (para entrar instantáneo)
   requestAnimationFrame(() => resetScratch());
 
+  // Bind intro
+  intro.addEventListener("click", onIntroTap);
+  intro.addEventListener("touchend", onIntroTap, { passive: false });
+  intro.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") onIntroTap(e);
+  });
+
+  // Scratch events
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
@@ -384,7 +466,7 @@ function setup() {
   musicBtn.addEventListener("click", async () => {
     if (!bgm) return;
     if (bgm.paused) {
-      audioStarted = false; // permite arrancar
+      audioStarted = false;
       await startMusicFromGesture();
     } else {
       bgm.pause();
@@ -392,6 +474,8 @@ function setup() {
     }
   });
 
+  // Arranca el mensaje 1 animado sin toque
+  toStep0Initial();
   updateMusicBtn();
 }
 
