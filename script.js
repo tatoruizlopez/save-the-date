@@ -1,7 +1,7 @@
 // ======= CONFIG =======
 const HORA = "12:00";
-const BRUSH = 32;                 // grosor del rasca
-const CELEBRATE_AFTER = 220;      // dispara corazones una vez, pero NO bloquea seguir rascando
+const BRUSH = 32;
+const CELEBRATE_AFTER = 220;
 // ======================
 
 const stage = document.getElementById("heartStage");
@@ -20,15 +20,12 @@ let last = null;
 let scratchUnits = 0;
 let celebrated = false;
 
-// Pointer + Touch
 let activePointerId = null;
 let touchActive = false;
 
-// RAF throttle
 let rafPending = false;
 let pendingPoint = null;
 
-// Audio state
 let audioStartedOnce = false;
 
 function cssVar(name, fallback) {
@@ -51,12 +48,11 @@ function fitCanvas() {
 }
 
 function buildHeartPath(w, h) {
-  // Corazón centrado en el canvas del stage
   const cx = w * 0.5;
-  const cy = h * 0.52;
+  const cy = h * 0.55;            // un pelín más abajo para tapar mejor el texto
 
-  // MÁS PEQUEÑO (antes 0.46) => ahora 0.42
-  const size = Math.min(w, h) * 0.42;
+  // MÁS GRANDE aún para cubrir letras (antes 0.48)
+  const size = Math.min(w, h) * 0.58;
 
   const p = new Path2D();
   p.moveTo(cx, cy + size * 0.35);
@@ -72,10 +68,8 @@ function drawGoldHeartOverlay() {
   const h = r.height;
 
   ctx.clearRect(0, 0, w, h);
-
   hp = buildHeartPath(w, h);
 
-  // dorado SOLO dentro del corazón
   ctx.save();
   ctx.clip(hp);
 
@@ -87,9 +81,8 @@ function drawGoldHeartOverlay() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  // textura foil
   ctx.globalAlpha = 0.22;
-  for (let i = 0; i < 110; i++) {
+  for (let i = 0; i < 120; i++) {
     const x = Math.random() * w;
     const y = Math.random() * h;
     const rr = Math.random() * 1.7 + 0.4;
@@ -102,7 +95,6 @@ function drawGoldHeartOverlay() {
 
   ctx.restore();
 
-  // borde
   ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 3;
@@ -217,40 +209,27 @@ function endDraw() {
 // ===== Música =====
 function updateMusicBtn() {
   if (!bgm || !musicBtn) return;
-  const playing = !bgm.paused;
-  musicBtn.textContent = playing ? "🔊 Música" : "🎵 Música";
+  musicBtn.textContent = bgm.paused ? "🎵 Música" : "🔊 Música";
 }
 
 async function tryStartMusic() {
   if (!bgm) return;
-
-  // iOS/Chrome: solo se puede reproducir con gesto del usuario.
-  // Aquí lo llamamos en pointerdown/touchstart, que sí cuenta como gesto.
   if (!audioStartedOnce) {
     audioStartedOnce = true;
     bgm.volume = 0.85;
   }
-
-  try {
-    await bgm.play();
-  } catch {
-    // Si falla (por restricciones), el usuario puede darle al botón Música
-  }
+  try { await bgm.play(); } catch {}
   updateMusicBtn();
 }
 
 musicBtn.addEventListener("click", async () => {
   if (!bgm) return;
-
-  if (bgm.paused) {
-    await tryStartMusic();
-  } else {
-    bgm.pause();
-  }
+  if (bgm.paused) await tryStartMusic();
+  else bgm.pause();
   updateMusicBtn();
 });
 
-// ===== Pointer Events =====
+// ===== Pointer + Touch fallback =====
 function onPointerDown(e) {
   if (touchActive) return;
   if (activePointerId !== null) return;
@@ -258,19 +237,16 @@ function onPointerDown(e) {
   activePointerId = e.pointerId;
   try { canvas.setPointerCapture(activePointerId); } catch {}
 
-  // Arranca música con el primer gesto
   tryStartMusic();
 
-  const p = posFromClient(e.clientX, e.clientY);
-  startAt(p);
+  startAt(posFromClient(e.clientX, e.clientY));
 }
 
 function onPointerMove(e) {
   if (touchActive) return;
   if (!drawing || e.pointerId !== activePointerId) return;
 
-  const p = posFromClient(e.clientX, e.clientY);
-  scheduleMove(p);
+  scheduleMove(posFromClient(e.clientX, e.clientY));
 }
 
 function onPointerUp(e) {
@@ -282,19 +258,14 @@ function onPointerUp(e) {
   endDraw();
 }
 
-// ===== Touch fallback =====
 function onTouchStart(e) {
   touchActive = true;
   e.preventDefault();
-
-  // Arranca música con gesto
   tryStartMusic();
 
   const t = e.touches[0];
   if (!t) return;
-
-  const p = posFromClient(t.clientX, t.clientY);
-  startAt(p);
+  startAt(posFromClient(t.clientX, t.clientY));
 }
 
 function onTouchMove(e) {
@@ -303,9 +274,7 @@ function onTouchMove(e) {
 
   const t = e.touches[0];
   if (!t) return;
-
-  const p = posFromClient(t.clientX, t.clientY);
-  scheduleMove(p);
+  scheduleMove(posFromClient(t.clientX, t.clientY));
 }
 
 function onTouchEnd(e) {
@@ -314,7 +283,6 @@ function onTouchEnd(e) {
   endDraw();
 }
 
-// Eventos
 canvas.addEventListener("pointerdown", onPointerDown);
 canvas.addEventListener("pointermove", onPointerMove);
 canvas.addEventListener("pointerup", onPointerUp);
@@ -340,7 +308,6 @@ function reset() {
 
   fitCanvas();
   drawGoldHeartOverlay();
-
   updateMusicBtn();
 }
 

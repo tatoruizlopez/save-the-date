@@ -81,15 +81,15 @@ h1{
     linear-gradient(180deg, #ffffffb8, #ffffff6b);
 }
 
-/* CORAZÓN MÁS GRANDE para cubrir el texto */
+/* CORAZÓN MÁS GRANDE (para tapar TODO el texto) */
 .heart-stage{
   position:absolute;
   left:50%;
   top:50%;
   transform:translate(-50%, -50%);
 
-  /* Antes: 230px/60%. Ahora más grande */
-  width:min(320px, 78%);
+  /* Subido bastante */
+  width:min(380px, 90%);
   aspect-ratio: 1 / 0.92;
 
   display:grid;
@@ -105,16 +105,19 @@ h1{
   justify-content:center;
   text-align:center;
   pointer-events:none;
-  padding:16px;
 
-  /* un pelín abajo para que se vea centrado */
-  transform: translateY(8px);
+  padding:18px;
+  max-width:86%;
+  margin:0 auto;
+
+  /* BAJAMOS el contenido para que no asome por arriba */
+  transform: translateY(18px);
 }
 
 .heart-date{
   font-family:"Playfair Display", serif;
   font-weight:600;
-  font-size:22px;
+  font-size:24px;
   line-height:1.05;
 }
 
@@ -193,7 +196,11 @@ h1{
 
 @media (max-width: 380px){
   h1{ font-size:34px; }
-  .heart-stage{ width:min(300px, 86%); }
-  .heart-date{ font-size:21px; }
+
+  /* En móvil pequeño, también grande pero sin salirse */
+  .heart-stage{ width:min(350px, 96%); }
+
+  .heart-date{ font-size:22px; }
   .heart-time{ font-size:19px; }
+  .heart-reveal{ transform: translateY(16px); }
 }
