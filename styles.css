@@ -1,206 +1,57 @@
-:root{
-  --bg1:#fde7ef;
-  --bg2:#f7d9e6;
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Save the Date — Cris & Jose</title>
 
-  --ink:#2b2230;
-  --muted:#6a556b;
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 
-  --card:#ffffffcc;
-  --border:#ffffffa6;
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <section class="card" aria-label="Save the Date">
 
-  --gold1:#f6e6b6;
-  --gold2:#e8c97a;
-  --gold3:#caa24d;
-}
+      <div class="headline">
+        <div class="small">SAVE THE DATE</div>
+        <h1>Cris <span class="amp">&amp;</span> Jose</h1>
+        <div class="meta">Granada</div>
+      </div>
 
-*{ box-sizing:border-box; }
-html,body{ height:100%; }
+      <div class="scratch-area">
+        <!-- Zona de rasca: corazón -->
+        <div class="heart-stage" id="heartStage" aria-label="Rasca el corazón">
+          <div class="heart-reveal">
+            <div class="heart-date">1 de Mayo 2026</div>
+            <div class="heart-time" id="hora">12:00</div>
+            <div class="heart-note">✨ ¡Nos casamos! ✨</div>
+          </div>
 
-body{
-  margin:0;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  color:var(--ink);
-  background:
-    radial-gradient(900px 700px at 20% 20%, #fff 0%, transparent 60%),
-    radial-gradient(900px 700px at 80% 30%, #fff 0%, transparent 60%),
-    linear-gradient(140deg, var(--bg1), var(--bg2));
-  display:grid;
-  place-items:center;
-  padding:24px;
-}
+          <canvas id="scratch" class="heart-canvas"></canvas>
+        </div>
 
-.wrap{ width:min(420px, 96vw); }
+        <div class="hint" id="hint">Rasca el corazón dorado para descubrir la hora</div>
+      </div>
 
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:24px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 18px 55px rgba(20, 10, 25, .18);
-  padding:22px 20px 18px;
-}
+      <footer class="footer">
+        <span>Guárdate la fecha 💗</span>
+      </footer>
+    </section>
 
-.headline{
-  text-align:center;
-  margin-bottom:14px;
-}
+    <div class="below">
+      <button class="btn" id="resetBtn" type="button">Reiniciar rasca</button>
+      <button class="btn" id="musicBtn" type="button">🎵 Música</button>
+      <span class="tip">Tip: en móvil, rasca con el dedo. En PC, con el ratón.</span>
+      <span class="music-status" id="musicStatus" aria-live="polite"></span>
+    </div>
+  </main>
 
-.small{
-  letter-spacing:.22em;
-  text-transform:uppercase;
-  font-size:12px;
-  color:var(--muted);
-}
+  <!-- Música (sube tu audio a /assets/song.mp3) -->
+  <audio id="bgm" src="assets/song.mp3" preload="auto" loop playsinline></audio>
 
-h1{
-  font-family:"Playfair Display", serif;
-  font-weight:600;
-  font-size:38px;
-  margin:8px 0 6px;
-}
-
-.amp{
-  font-family:"Playfair Display", serif;
-  font-weight:500;
-}
-
-.meta{
-  color:var(--muted);
-  font-weight:400;
-}
-
-.scratch-area{
-  position:relative;
-  width:100%;
-  aspect-ratio: 1 / 1.05;
-  border-radius:22px;
-  overflow:hidden;
-  border:1px solid #ffffffb3;
-  background:
-    radial-gradient(420px 320px at 50% 30%, #fff 0%, #fff0 65%),
-    linear-gradient(180deg, #ffffffb8, #ffffff6b);
-}
-
-/* CORAZÓN MÁS GRANDE (para tapar TODO el texto) */
-.heart-stage{
-  position:absolute;
-  left:50%;
-  top:50%;
-  transform:translate(-50%, -50%);
-
-  /* Subido bastante */
-  width:min(380px, 90%);
-  aspect-ratio: 1 / 0.92;
-
-  display:grid;
-  place-items:center;
-}
-
-.heart-reveal{
-  position:absolute;
-  inset:0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  pointer-events:none;
-
-  padding:18px;
-  max-width:86%;
-  margin:0 auto;
-
-  /* BAJAMOS el contenido para que no asome por arriba */
-  transform: translateY(18px);
-}
-
-.heart-date{
-  font-family:"Playfair Display", serif;
-  font-weight:600;
-  font-size:24px;
-  line-height:1.05;
-}
-
-.heart-time{
-  margin-top:8px;
-  font-family: Inter, sans-serif;
-  font-weight:500;
-  font-size:20px;
-  color:#3a2a44;
-}
-
-.heart-note{
-  margin-top:10px;
-  font-size:13px;
-  color:var(--muted);
-  letter-spacing:.02em;
-}
-
-.heart-canvas{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  touch-action:none;
-  -webkit-user-select:none;
-  user-select:none;
-}
-
-.hint{
-  position:absolute;
-  left:12px;
-  right:12px;
-  bottom:12px;
-  background:#ffffffcc;
-  border:1px solid #ffffffc7;
-  color:var(--muted);
-  font-size:12px;
-  border-radius:999px;
-  padding:10px 12px;
-  text-align:center;
-  backdrop-filter: blur(6px);
-  transition: opacity 200ms ease;
-}
-
-.footer{
-  margin-top:14px;
-  text-align:center;
-  font-size:13px;
-  color:var(--muted);
-}
-
-.below{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  justify-content:space-between;
-  margin-top:14px;
-  flex-wrap:wrap;
-}
-
-.btn{
-  border:0;
-  padding:10px 14px;
-  border-radius:999px;
-  background:#ffffffd9;
-  box-shadow: 0 10px 25px rgba(20, 10, 25, .12);
-  cursor:pointer;
-  font-weight:500;
-}
-.btn:active{ transform: translateY(1px); }
-
-.tip{
-  font-size:12px;
-  color:var(--muted);
-}
-
-@media (max-width: 380px){
-  h1{ font-size:34px; }
-
-  /* En móvil pequeño, también grande pero sin salirse */
-  .heart-stage{ width:min(350px, 96%); }
-
-  .heart-date{ font-size:22px; }
-  .heart-time{ font-size:19px; }
-  .heart-reveal{ transform: translateY(16px); }
-}
+  <script src="script.js"></script>
+</body>
+</html>
