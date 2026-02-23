@@ -1,38 +1,39 @@
 // ======= CONFIG RÁPIDA =======
-const HORA = "12:00"; // Hora de la boda
+const HORA = "12:00";
+const REVEAL_AFTER_SCRATCH_UNITS = 220; // cuanto hay que rascar para “completar”
+const BRUSH = 34; // grosor del rasca
 // =============================
 
 const canvas = document.getElementById("scratch");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d", { willReadFrequently: false });
 const hint = document.getElementById("hint");
 const resetBtn = document.getElementById("resetBtn");
 document.getElementById("hora").textContent = `Hora: ${HORA}`;
 
-let isDrawing = false;
+let isDown = false;
 let last = null;
 let revealed = false;
+let scratchUnits = 0; // contador ligero
 
 function cssVar(name, fallback) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return v || fallback;
 }
 
-function getRect() {
+function rect() {
   return canvas.getBoundingClientRect();
 }
 
+// Ajuste nítido en móvil/retina
 function fitCanvas() {
-  // Canvas a tamaño CSS * DPR para que se vea nítido
-  const rect = getRect();
+  const r = rect();
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.round(rect.width * dpr);
-  canvas.height = Math.round(rect.height * dpr);
-  // Trabajaremos en coordenadas CSS (no DPR)
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // trabajamos en px CSS
 }
 
 function heartPath(w, h) {
-  // corazón centrado (zona rascable)
   const cx = w * 0.5;
   const cy = h * 0.46;
   const size = Math.min(w, h) * 0.30;
@@ -45,16 +46,17 @@ function heartPath(w, h) {
   return p;
 }
 
-function drawGoldOverlay() {
-  const rect = getRect();
-  const w = rect.width;
-  const h = rect.height;
+let hp = null; // cache de la ruta del corazón (clave para rendimiento)
 
-  // Limpia
+function redrawOverlay() {
+  const r = rect();
+  const w = r.width;
+  const h = r.height;
+
   ctx.globalCompositeOperation = "source-over";
   ctx.clearRect(0, 0, w, h);
 
-  // Degradado dorado (capa completa)
+  // Overlay dorado
   const g = ctx.createLinearGradient(0, 0, w, h);
   g.addColorStop(0, cssVar("--gold1", "#f6e6b6"));
   g.addColorStop(0.5, cssVar("--gold2", "#e8c97a"));
@@ -62,30 +64,32 @@ function drawGoldOverlay() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  // “Foil” speckles sutiles
-  ctx.globalAlpha = 0.22;
-  for (let i = 0; i < 140; i++) {
+  // speckles
+  ctx.globalAlpha = 0.20;
+  for (let i = 0; i < 110; i++) {
     const x = Math.random() * w;
     const y = Math.random() * h;
-    const r = Math.random() * 1.7 + 0.4;
+    const rr = Math.random() * 1.6 + 0.4;
     ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.arc(x, y, rr, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(255,255,255,0.95)";
     ctx.fill();
   }
   ctx.globalAlpha = 1;
 
-  // Oscurece ligeramente fuera del corazón para guiar el rasca (más pro)
-  const hp = heartPath(w, h);
+  // Cachea corazón
+  hp = heartPath(w, h);
+
+  // oscurece fuera del corazón (guía visual)
   ctx.save();
   ctx.globalAlpha = 0.18;
   ctx.fillStyle = "rgba(0,0,0,0.35)";
   ctx.fillRect(0, 0, w, h);
   ctx.globalCompositeOperation = "destination-out";
-  ctx.fill(hp); // “recorta” el sombreado dejando claro el corazón
+  ctx.fill(hp);
   ctx.restore();
 
-  // Borde blanco del corazón
+  // borde
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
   ctx.strokeStyle = "rgba(255,255,255,0.85)";
@@ -94,84 +98,58 @@ function drawGoldOverlay() {
   ctx.restore();
 }
 
-function getPointerPos(e) {
-  const rect = getRect();
-  const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
-  return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+function getPos(e) {
+  const r = rect();
+  const p = e.touches ? e.touches[0] : e;
+  return { x: p.clientX - r.left, y: p.clientY - r.top };
 }
 
-function pointInsideHeart(p) {
-  const rect = getRect();
-  const hp = heartPath(rect.width, rect.height);
+function inHeart(p) {
+  // MUY rápido porque hp está cacheado
   return ctx.isPointInPath(hp, p.x, p.y);
 }
 
-function scratch(from, to) {
-  // Rasca SOLO si estamos dentro del corazón
-  if (!pointInsideHeart(to)) return;
+function scratchStroke(a, b) {
+  if (!inHeart(b)) return;
 
   ctx.save();
   ctx.globalCompositeOperation = "destination-out";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.lineWidth = 34;
+  ctx.lineWidth = BRUSH;
   ctx.beginPath();
-  ctx.moveTo(from.x, from.y);
-  ctx.lineTo(to.x, to.y);
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
   ctx.stroke();
   ctx.restore();
+
+  // suma unidades según distancia (barato)
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  scratchUnits += Math.sqrt(dx * dx + dy * dy) / 6; // factor ajustable
 }
 
 function scratchDot(p) {
-  if (!pointInsideHeart(p)) return;
+  if (!inHeart(p)) return;
 
   ctx.save();
   ctx.globalCompositeOperation = "destination-out";
   ctx.beginPath();
-  ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+  ctx.arc(p.x, p.y, BRUSH * 0.55, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+
+  scratchUnits += 10;
 }
 
-function scratchedPercentInHeart() {
-  // Calcula % rascado SOLO dentro del corazón
-  const rect = getRect();
-  const w = Math.floor(rect.width);
-  const h = Math.floor(rect.height);
+function maybeFinish() {
+  if (revealed) return;
 
-  const img = ctx.getImageData(0, 0, w, h);
-  const hp = heartPath(w, h);
+  // Oculta hint temprano para que no moleste
+  if (scratchUnits > 40) hint.style.opacity = "0";
 
-  let total = 0;
-  let transparent = 0;
-
-  // Muestreo por pasos para acelerar (2 = bastante preciso sin ir lento)
-  const step = 2;
-
-  for (let y = 0; y < h; y += step) {
-    for (let x = 0; x < w; x += step) {
-      if (!ctx.isPointInPath(hp, x, y)) continue;
-      total++;
-
-      const idx = (y * w + x) * 4 + 3; // alpha
-      if (img.data[idx] === 0) transparent++;
-    }
-  }
-
-  if (total === 0) return 0;
-  return transparent / total;
-}
-
-function maybeReveal() {
-  const p = scratchedPercentInHeart();
-
-  if (p > 0.18) hint.style.opacity = "0";
-  else hint.style.opacity = "1";
-
-  // Al 55%: “final effect”
-  if (!revealed && p > 0.55) {
+  if (scratchUnits >= REVEAL_AFTER_SCRATCH_UNITS) {
     revealed = true;
-    hint.textContent = "¡Ya está! 💗";
     hint.style.opacity = "0";
     burstHearts();
   }
@@ -179,41 +157,48 @@ function maybeReveal() {
 
 function start(e) {
   e.preventDefault();
-  isDrawing = true;
-  const p = getPointerPos(e);
+  isDown = true;
+  const p = getPos(e);
   last = p;
   scratchDot(p);
-  maybeReveal();
+  maybeFinish();
 }
 
 function move(e) {
-  if (!isDrawing) return;
+  if (!isDown) return;
   e.preventDefault();
-  const p = getPointerPos(e);
-  scratch(last, p);
-  last = p;
-  maybeReveal();
+  const p = getPos(e);
+
+  // IMPORTANTE: limitamos la frecuencia de dibujo a requestAnimationFrame
+  // para que sea suave en móvil
+  requestAnimationFrame(() => {
+    if (!isDown || !last) return;
+    scratchStroke(last, p);
+    last = p;
+    maybeFinish();
+  });
 }
 
 function end() {
-  isDrawing = false;
+  isDown = false;
   last = null;
 }
 
 function reset() {
+  scratchUnits = 0;
   revealed = false;
+
   fitCanvas();
-  drawGoldOverlay();
+  redrawOverlay();
+
   hint.style.opacity = "1";
   hint.textContent = "Rasca el corazón dorado para descubrir la hora";
 }
 
 function burstHearts() {
-  // Confetti suave de corazoncitos usando elementos flotantes
   const container = document.querySelector(".scratch-area");
-  const rect = container.getBoundingClientRect();
-
   const count = 14;
+
   for (let i = 0; i < count; i++) {
     const s = document.createElement("span");
     s.textContent = Math.random() > 0.35 ? "💗" : "✨";
@@ -227,31 +212,25 @@ function burstHearts() {
 
     container.appendChild(s);
 
-    // trigger anim
     requestAnimationFrame(() => {
       s.style.opacity = "1";
       s.style.transform = `translate(-50%,-50%) translate(${(Math.random()-0.5)*140}px, ${-120 - Math.random()*120}px)`;
     });
 
-    // cleanup
-    setTimeout(() => {
-      s.style.opacity = "0";
-    }, 900);
-
-    setTimeout(() => {
-      s.remove();
-    }, 1600);
+    setTimeout(() => { s.style.opacity = "0"; }, 900);
+    setTimeout(() => { s.remove(); }, 1600);
   }
 }
 
-// Eventos
+// Eventos mouse
 canvas.addEventListener("mousedown", start);
 canvas.addEventListener("mousemove", move);
 window.addEventListener("mouseup", end);
 
+// Eventos touch (iOS)
 canvas.addEventListener("touchstart", start, { passive: false });
 canvas.addEventListener("touchmove", move, { passive: false });
-canvas.addEventListener("touchend", end);
+canvas.addEventListener("touchend", end, { passive: true });
 
 resetBtn.addEventListener("click", reset);
 window.addEventListener("resize", reset);
