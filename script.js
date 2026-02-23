@@ -8,9 +8,11 @@ const CELEBRATE_AFTER = 220;
 const intro = document.getElementById("intro");
 const introMsg = document.getElementById("introMsg");
 const introTap = document.getElementById("introTap");
+const introAudioHint = document.getElementById("introAudioHint");
 
 // Main elements
 const stage = document.getElementById("heartStage");
+const reveal = document.getElementById("heartReveal");
 const canvas = document.getElementById("scratch");
 const ctx = canvas.getContext("2d");
 const hint = document.getElementById("hint");
@@ -36,10 +38,8 @@ let pendingPoint = null;
 
 // Audio state
 let audioPrimed = false;
+let audioUnmuted = false;
 let statusTimer = null;
-
-// Ensure scratch init runs only once (after intro dismissed)
-let scratchReady = false;
 
 function setStatus(msg) {
   if (!musicStatus) return;
@@ -92,6 +92,10 @@ function buildHeartPath(w, h) {
 }
 
 function drawGoldHeartOverlay() {
+  // Oculta texto mientras dibujamos
+  stage.classList.remove("ready");
+  if (reveal) reveal.style.opacity = "0";
+
   const r = getRect();
   const w = r.width;
   const h = r.height;
@@ -129,6 +133,9 @@ function drawGoldHeartOverlay() {
   ctx.lineWidth = 3;
   ctx.stroke(hp);
   ctx.restore();
+
+  // Ahora sí: mostramos el texto
+  stage.classList.add("ready");
 }
 
 function posFromClient(clientX, clientY) {
@@ -169,7 +176,6 @@ function scratchStroke(a, b) {
 
 function maybeCelebrate() {
   if (scratchUnits > 25) hint.style.opacity = "0";
-
   if (!celebrated && scratchUnits >= CELEBRATE_AFTER) {
     celebrated = true;
     hint.style.opacity = "0";
@@ -180,7 +186,6 @@ function maybeCelebrate() {
 function burstHearts() {
   const container = stage;
   const count = 12;
-
   for (let i = 0; i < count; i++) {
     const s = document.createElement("span");
     s.textContent = Math.random() > 0.35 ? "💗" : "✨";
@@ -194,7 +199,6 @@ function burstHearts() {
     s.style.pointerEvents = "none";
 
     container.appendChild(s);
-
     requestAnimationFrame(() => {
       s.style.opacity = "1";
       s.style.transform = `translate(-50%,-50%) translate(${(Math.random()-0.5)*120}px, ${-90 - Math.random()*120}px)`;
@@ -235,56 +239,76 @@ function endDraw() {
   rafPending = false;
 }
 
-// ===== Música (con diagnóstico) =====
+/* ========= AUDIO: autoplay muted + unmute en primer gesto ========= */
 function updateMusicBtn() {
   if (!bgm || !musicBtn) return;
-  musicBtn.textContent = bgm.paused ? "🎵 Música" : "🔊 Música";
+  musicBtn.textContent = bgm.paused ? "🎵 Música" : (audioUnmuted ? "🔊 Música" : "🔈 Música");
 }
 
-async function tryStartMusic(userInitiated = false) {
+function fadeVolume(to = 0.85, ms = 700) {
+  const from = bgm.volume ?? 0;
+  const start = performance.now();
+  function step(t) {
+    const k = Math.min(1, (t - start) / ms);
+    bgm.volume = from + (to - from) * k;
+    if (k < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+async function tryAutoplayOnLoad() {
   if (!bgm) return;
 
   if (!audioPrimed) {
     audioPrimed = true;
-    bgm.muted = false;
-    bgm.volume = 0.85;
+    bgm.volume = 0;      // empezamos suave
+    // bgm.muted viene ya en HTML (autoplay muted)
     try { bgm.load(); } catch {}
   }
 
   try {
-    await bgm.play();
-    setStatus("");
-  } catch (err) {
-    const msg =
-      (err && err.name === "NotAllowedError")
-        ? "El navegador bloqueó el audio. Revisa: pestaña/sitio NO silenciado y permiso de sonido en el candado."
-        : "No se pudo reproducir el audio. Prueba a abrir /assets/song.mp3 y verifica que se escucha.";
+    await bgm.play(); // en muchos navegadores arrancará (muted)
+  } catch {
+    // si no puede, no pasa nada: arrancará en el primer toque
+  }
+  updateMusicBtn();
+}
 
-    if (userInitiated) setStatus(msg);
+async function unmuteOnUserGesture() {
+  if (!bgm) return;
+  if (audioUnmuted) return;
+
+  // desmutea y sube volumen con fade
+  bgm.muted = false;
+  audioUnmuted = true;
+
+  try {
+    await bgm.play();
+  } catch (err) {
+    setStatus("El navegador bloqueó el audio. Revisa: sitio no silenciado / permiso de sonido.");
   }
 
+  fadeVolume(0.85, 650);
+  if (introAudioHint) introAudioHint.textContent = "🎵 Música activada";
   updateMusicBtn();
 }
 
 musicBtn?.addEventListener("click", async () => {
   if (!bgm) return;
-
   if (bgm.paused) {
-    await tryStartMusic(true);
+    // click = gesto válido: lo desmuteamos y reproducimos
+    await unmuteOnUserGesture();
   } else {
     bgm.pause();
     updateMusicBtn();
   }
 });
 
-bgm?.addEventListener("error", () => {
-  setStatus("Error cargando el audio. Comprueba que existe: /assets/song.mp3");
-});
-
 bgm?.addEventListener("play", updateMusicBtn);
 bgm?.addEventListener("pause", updateMusicBtn);
+bgm?.addEventListener("error", () => setStatus("Error cargando el audio: /assets/song.mp3"));
 
-// ===== Scratch input handlers =====
+/* ========= INPUT SCRATCH ========= */
 function onPointerDown(e) {
   if (touchActive) return;
   if (activePointerId !== null) return;
@@ -292,8 +316,6 @@ function onPointerDown(e) {
   activePointerId = e.pointerId;
   try { canvas.setPointerCapture(activePointerId); } catch {}
 
-  // gesto usuario: podemos intentar arrancar música si quiere
-  // (NO forzamos, por eso está en el botón)
   startAt(posFromClient(e.clientX, e.clientY));
 }
 
@@ -352,10 +374,38 @@ function resetScratch() {
   setStatus("");
 }
 
-// Init scratch only when main is visible (after intro)
-function setupScratchOnce() {
-  if (scratchReady) return;
-  scratchReady = true;
+/* ========= INTRO FLOW ========= */
+function showIntroTexts() {
+  setTimeout(() => introMsg?.classList.add("show"), 1600);
+  setTimeout(() => introTap?.classList.add("show"), 2600);
+}
+
+function enterMain() {
+  // Primer gesto: aquí desmuteamos para que suene inmediatamente al tocar (móvil friendly)
+  unmuteOnUserGesture();
+
+  intro.classList.add("intro-dismiss");
+  setTimeout(() => {
+    intro.style.display = "none";
+  }, 520);
+}
+
+intro?.addEventListener("click", enterMain);
+intro?.addEventListener("touchend", (e) => { e.preventDefault(); enterMain(); }, { passive: false });
+intro?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") enterMain();
+});
+
+/* ========= INIT ========= */
+function setup() {
+  // 1) Intento de autoplay desde el minuto 0 (muted)
+  tryAutoplayOnLoad();
+
+  // 2) Preparamos el canvas YA (mientras está la intro encima),
+  // así cuando pulses, el corazón ya está renderizado.
+  requestAnimationFrame(() => {
+    resetScratch();
+  });
 
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
@@ -370,31 +420,8 @@ function setupScratchOnce() {
   resetBtn.addEventListener("click", resetScratch);
   window.addEventListener("resize", resetScratch);
 
-  resetScratch();
+  updateMusicBtn();
+  showIntroTexts();
 }
 
-// ===== Intro flow =====
-function showIntroTexts() {
-  setTimeout(() => introMsg?.classList.add("show"), 1600);
-  setTimeout(() => introTap?.classList.add("show"), 2600);
-}
-
-function enterMain() {
-  // primera interacción: es gesto válido (por si quieres iniciar música aquí en vez de botón)
-  // tryStartMusic(false);
-
-  intro.classList.add("intro-dismiss");
-  setTimeout(() => {
-    intro.style.display = "none";
-    // ahora que el layout es estable, iniciamos el rasca
-    requestAnimationFrame(() => setupScratchOnce());
-  }, 520);
-}
-
-intro?.addEventListener("click", enterMain);
-intro?.addEventListener("touchend", (e) => { e.preventDefault(); enterMain(); }, { passive: false });
-intro?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") enterMain();
-});
-
-showIntroTexts();
+setup();

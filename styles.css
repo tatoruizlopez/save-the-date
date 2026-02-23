@@ -27,7 +27,7 @@ body{
 }
 
 /* =========================
-   INTRO SCREEN
+   INTRO
    ========================= */
 .intro-screen{
   position:fixed;
@@ -45,7 +45,6 @@ body{
 .intro-bg{
   position:absolute;
   inset:0;
-  /* ⬇️ Tu imagen aquí (sube como assets/intro.jpg) */
   background-image: url("assets/intro.jpg");
   background-size: cover;
   background-position: center;
@@ -90,7 +89,6 @@ body{
   font-weight:600;
   font-size:40px;
   text-shadow: 0 12px 30px rgba(0,0,0,.35);
-  letter-spacing:.01em;
 }
 
 .intro-msg, .intro-tap{
@@ -102,7 +100,6 @@ body{
 
 .intro-msg{
   font-size:16px;
-  font-weight:400;
   color: rgba(255,255,255,0.95);
 }
 
@@ -117,6 +114,14 @@ body{
   border:1px solid rgba(255,255,255,0.40);
   background: rgba(0,0,0,0.18);
   backdrop-filter: blur(6px);
+}
+
+.intro-audio{
+  margin-top:6px;
+  font-size:12px;
+  color: rgba(255,255,255,0.88);
+  opacity:0.9;
+  text-shadow: 0 10px 26px rgba(0,0,0,.35);
 }
 
 .show{
@@ -136,7 +141,7 @@ body{
 }
 
 /* =========================
-   MAIN SCREEN
+   MAIN
    ========================= */
 .main-screen{
   min-height:100dvh;
@@ -199,21 +204,22 @@ h1{
     linear-gradient(180deg, #ffffffb8, #ffffff6b);
 }
 
-/* Corazón grande */
+/* Corazón */
 .heart-stage{
   position:absolute;
   left:50%;
   top:50%;
   transform:translate(-50%, -50%);
-
   width:min(380px, 90%);
   aspect-ratio: 1 / 0.92;
-
   display:grid;
   place-items:center;
 }
 
+/* CLAVE: el texto NO se ve hasta que el corazón esté dibujado */
 .heart-reveal{
+  opacity:0;
+  transition: opacity 220ms ease;
   position:absolute;
   inset:0;
   display:flex;
@@ -222,13 +228,14 @@ h1{
   justify-content:center;
   text-align:center;
   pointer-events:none;
-
   padding:18px;
   max-width:86%;
   margin:0 auto;
-
-  /* Ajuste fino (si quieres subir/bajar el texto dentro del corazón) */
   transform: translateY(-28px);
+}
+
+.heart-stage.ready .heart-reveal{
+  opacity:1;
 }
 
 .heart-date{
@@ -240,7 +247,6 @@ h1{
 
 .heart-time{
   margin-top:6px;
-  font-family: Inter, sans-serif;
   font-weight:500;
   font-size:20px;
   color:#3a2a44;
@@ -304,7 +310,6 @@ h1{
   cursor:pointer;
   font-weight:500;
 }
-.btn:active{ transform: translateY(1px); }
 
 .tip{
   font-size:12px;
@@ -326,6 +331,5 @@ h1{
   .heart-date{ font-size:22px; }
   .heart-time{ font-size:19px; }
   .heart-reveal{ transform: translateY(-24px); }
-
   .intro-kicker{ font-size:36px; }
 }
