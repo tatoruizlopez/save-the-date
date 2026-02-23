@@ -81,15 +81,15 @@ h1{
     linear-gradient(180deg, #ffffffb8, #ffffff6b);
 }
 
-/* El corazón (única zona “rascable”) */
+/* CORAZÓN MÁS GRANDE para cubrir el texto */
 .heart-stage{
   position:absolute;
   left:50%;
   top:50%;
   transform:translate(-50%, -50%);
 
-  /* Tamaño del corazón: ajustable */
-  width:min(280px, 72%);
+  /* Antes: 230px/60%. Ahora más grande */
+  width:min(320px, 78%);
   aspect-ratio: 1 / 0.92;
 
   display:grid;
@@ -99,11 +99,16 @@ h1{
 .heart-reveal{
   position:absolute;
   inset:0;
-  display:grid;
-  place-items:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
   text-align:center;
   pointer-events:none;
-  padding:14px;
+  padding:16px;
+
+  /* un pelín abajo para que se vea centrado */
+  transform: translateY(8px);
 }
 
 .heart-date{
@@ -128,7 +133,6 @@ h1{
   letter-spacing:.02em;
 }
 
-/* Canvas SOLO del corazón */
 .heart-canvas{
   position:absolute;
   inset:0;
@@ -139,7 +143,6 @@ h1{
   user-select:none;
 }
 
-/* Hint inferior */
 .hint{
   position:absolute;
   left:12px;
@@ -165,10 +168,11 @@ h1{
 
 .below{
   display:flex;
-  gap:12px;
+  gap:10px;
   align-items:center;
   justify-content:space-between;
   margin-top:14px;
+  flex-wrap:wrap;
 }
 
 .btn{
@@ -189,7 +193,7 @@ h1{
 
 @media (max-width: 380px){
   h1{ font-size:34px; }
-  .heart-stage{ width:min(260px, 78%); }
-  .heart-date{ font-size:20px; }
+  .heart-stage{ width:min(300px, 86%); }
+  .heart-date{ font-size:21px; }
   .heart-time{ font-size:19px; }
 }

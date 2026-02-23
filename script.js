@@ -1,6 +1,6 @@
 // ======= CONFIG =======
 const HORA = "12:00";
-const BRUSH = 34;                 // grosor del rasca
+const BRUSH = 32;                 // grosor del rasca
 const CELEBRATE_AFTER = 220;      // dispara corazones una vez, pero NO bloquea seguir rascando
 // ======================
 
@@ -9,9 +9,12 @@ const canvas = document.getElementById("scratch");
 const ctx = canvas.getContext("2d");
 const hint = document.getElementById("hint");
 const resetBtn = document.getElementById("resetBtn");
+const musicBtn = document.getElementById("musicBtn");
+const bgm = document.getElementById("bgm");
+
 document.getElementById("hora").textContent = HORA;
 
-let hp = null;                    // Path2D corazón cacheado
+let hp = null;
 let drawing = false;
 let last = null;
 let scratchUnits = 0;
@@ -24,6 +27,9 @@ let touchActive = false;
 // RAF throttle
 let rafPending = false;
 let pendingPoint = null;
+
+// Audio state
+let audioStartedOnce = false;
 
 function cssVar(name, fallback) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -41,15 +47,16 @@ function fitCanvas() {
   canvas.width = Math.round(r.width * dpr);
   canvas.height = Math.round(r.height * dpr);
 
-  // dibujamos en coordenadas CSS
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 function buildHeartPath(w, h) {
-  // En este canvas (solo del corazón), lo centramos bien
+  // Corazón centrado en el canvas del stage
   const cx = w * 0.5;
   const cy = h * 0.52;
-  const size = Math.min(w, h) * 0.46; // grande para ocupar el stage
+
+  // MÁS PEQUEÑO (antes 0.46) => ahora 0.42
+  const size = Math.min(w, h) * 0.42;
 
   const p = new Path2D();
   p.moveTo(cx, cy + size * 0.35);
@@ -82,7 +89,7 @@ function drawGoldHeartOverlay() {
 
   // textura foil
   ctx.globalAlpha = 0.22;
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 110; i++) {
     const x = Math.random() * w;
     const y = Math.random() * h;
     const rr = Math.random() * 1.7 + 0.4;
@@ -140,7 +147,7 @@ function scratchStroke(a, b) {
 }
 
 function maybeCelebrate() {
-  if (scratchUnits > 30) hint.style.opacity = "0";
+  if (scratchUnits > 25) hint.style.opacity = "0";
 
   if (!celebrated && scratchUnits >= CELEBRATE_AFTER) {
     celebrated = true;
@@ -150,7 +157,7 @@ function maybeCelebrate() {
 }
 
 function burstHearts() {
-  const container = stage; // salen desde el corazón
+  const container = stage;
   const count = 12;
 
   for (let i = 0; i < count; i++) {
@@ -207,15 +214,52 @@ function endDraw() {
   rafPending = false;
 }
 
-// ===== Pointer Events (PC + iOS modernos) =====
+// ===== Música =====
+function updateMusicBtn() {
+  if (!bgm || !musicBtn) return;
+  const playing = !bgm.paused;
+  musicBtn.textContent = playing ? "🔊 Música" : "🎵 Música";
+}
+
+async function tryStartMusic() {
+  if (!bgm) return;
+
+  // iOS/Chrome: solo se puede reproducir con gesto del usuario.
+  // Aquí lo llamamos en pointerdown/touchstart, que sí cuenta como gesto.
+  if (!audioStartedOnce) {
+    audioStartedOnce = true;
+    bgm.volume = 0.85;
+  }
+
+  try {
+    await bgm.play();
+  } catch {
+    // Si falla (por restricciones), el usuario puede darle al botón Música
+  }
+  updateMusicBtn();
+}
+
+musicBtn.addEventListener("click", async () => {
+  if (!bgm) return;
+
+  if (bgm.paused) {
+    await tryStartMusic();
+  } else {
+    bgm.pause();
+  }
+  updateMusicBtn();
+});
+
+// ===== Pointer Events =====
 function onPointerDown(e) {
-  // Si hay un touch activo usando fallback, ignora pointer duplicado
   if (touchActive) return;
-
   if (activePointerId !== null) return;
-  activePointerId = e.pointerId;
 
+  activePointerId = e.pointerId;
   try { canvas.setPointerCapture(activePointerId); } catch {}
+
+  // Arranca música con el primer gesto
+  tryStartMusic();
 
   const p = posFromClient(e.clientX, e.clientY);
   startAt(p);
@@ -238,10 +282,13 @@ function onPointerUp(e) {
   endDraw();
 }
 
-// ===== Touch fallback (iPhone donde Pointer no vaya bien) =====
+// ===== Touch fallback =====
 function onTouchStart(e) {
   touchActive = true;
   e.preventDefault();
+
+  // Arranca música con gesto
+  tryStartMusic();
 
   const t = e.touches[0];
   if (!t) return;
@@ -273,7 +320,6 @@ canvas.addEventListener("pointermove", onPointerMove);
 canvas.addEventListener("pointerup", onPointerUp);
 canvas.addEventListener("pointercancel", onPointerUp);
 
-// Touch fallback siempre (no molesta y arregla iPhone)
 canvas.addEventListener("touchstart", onTouchStart, { passive: false });
 canvas.addEventListener("touchmove", onTouchMove, { passive: false });
 canvas.addEventListener("touchend", onTouchEnd, { passive: false });
@@ -288,11 +334,14 @@ function reset() {
 
   scratchUnits = 0;
   celebrated = false;
+
   hint.style.opacity = "1";
   hint.textContent = "Rasca el corazón dorado para descubrir la hora";
 
   fitCanvas();
   drawGoldHeartOverlay();
+
+  updateMusicBtn();
 }
 
 reset();
