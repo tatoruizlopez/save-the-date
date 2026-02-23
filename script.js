@@ -1,14 +1,14 @@
 // ======= CONFIG RÁPIDA =======
 const HORA = "12:00";
 const BRUSH = 38;              // grosor del rasca
-const FINISH_AFTER = 220;      // “cantidad” de rasca para darlo por completado
+const FINISH_AFTER = 220;      // “cantidad” de rasca para completarlo
 // =============================
 
 const canvas = document.getElementById("scratch");
 const ctx = canvas.getContext("2d");
 const hint = document.getElementById("hint");
 const resetBtn = document.getElementById("resetBtn");
-document.getElementById("hora").textContent = `Hora: ${HORA}`;
+document.getElementById("hora").textContent = HORA;
 
 let hp = null;                 // Path2D corazón cacheado
 let drawing = false;
@@ -38,8 +38,8 @@ function fitCanvas() {
 
 function buildHeartPath(w, h) {
   const cx = w * 0.5;
-  const cy = h * 0.46;
-  const size = Math.min(w, h) * 0.30;
+  const cy = h * 0.46;                 // <-- IMPORTANTE (coincide con CSS top:46%)
+  const size = Math.min(w, h) * 0.30;  // tamaño del corazón
 
   const p = new Path2D();
   p.moveTo(cx, cy + size * 0.35);
@@ -58,11 +58,10 @@ function drawGoldHeartOverlay() {
 
   hp = buildHeartPath(w, h);
 
-  // Solo dibujamos DENTRO del corazón
+  // Solo dibujamos DENTRO del corazón (fuera es transparente => área real de rasca = corazón)
   ctx.save();
   ctx.clip(hp);
 
-  // Dorado
   const g = ctx.createLinearGradient(0, 0, w, h);
   g.addColorStop(0, cssVar("--gold1", "#f6e6b6"));
   g.addColorStop(0.5, cssVar("--gold2", "#e8c97a"));
@@ -71,7 +70,7 @@ function drawGoldHeartOverlay() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  // Textura tipo “foil” (suave)
+  // Textura “foil”
   ctx.globalAlpha = 0.22;
   for (let i = 0; i < 130; i++) {
     const x = Math.random() * w;
@@ -86,7 +85,7 @@ function drawGoldHeartOverlay() {
 
   ctx.restore();
 
-  // Borde del corazón (por fuera del clip)
+  // Borde
   ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 3;
@@ -103,8 +102,7 @@ function scratchStroke(a, b) {
   if (finished) return;
 
   ctx.save();
-  // IMPORTANTE: borramos SOLO dentro del corazón
-  ctx.clip(hp);
+  ctx.clip(hp); // borra solo dentro del corazón
   ctx.globalCompositeOperation = "destination-out";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -116,7 +114,6 @@ function scratchStroke(a, b) {
   ctx.stroke();
   ctx.restore();
 
-  // contador ligero por distancia (nada de getImageData)
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   scratchUnits += Math.sqrt(dx * dx + dy * dy) / 6;
@@ -139,7 +136,6 @@ function scratchDot(p) {
 function maybeFinish() {
   if (finished) return;
 
-  // hint desaparece pronto
   if (scratchUnits > 40) hint.style.opacity = "0";
 
   if (scratchUnits >= FINISH_AFTER) {
@@ -181,6 +177,7 @@ function reset() {
   last = null;
   scratchUnits = 0;
   finished = false;
+
   hint.style.opacity = "1";
   hint.textContent = "Rasca el corazón dorado para descubrir la hora";
 
@@ -188,9 +185,8 @@ function reset() {
   drawGoldHeartOverlay();
 }
 
-// ===== Pointer Events (lo que arregla iPhone y fluidez) =====
+// ===== Pointer Events (iPhone + PC fluido) =====
 function onPointerDown(e) {
-  // Solo un dedo/puntero
   if (activePointerId !== null) return;
 
   activePointerId = e.pointerId;
