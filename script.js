@@ -5,6 +5,11 @@ const CELEBRATE_AFTER = 220;
 
 const TEXT_STEP1 = "Pulsa aquí, somos Cris, Elián y Jose.";
 const TEXT_STEP2 = "Tenemos que compartir contigo una cosa…";
+
+// SUPER GLITTER settings
+const GLITTER_DUST = 1100;     // polvito
+const GLITTER_TWINKLES = 44;   // estrellitas
+const SPARKLES_ON_SCRATCH = 2; // destellos por movimiento
 // ======================
 
 // Intro
@@ -50,6 +55,9 @@ let touchActive = false;
 
 let rafPending = false;
 let pendingPoint = null;
+
+// Sparkles (DOM)
+let sparkleBudget = 0; // simple throttle
 
 // Music state
 let statusTimer = null;
@@ -139,8 +147,47 @@ async function playWhoosh() {
     whoosh.currentTime = 0;
     whoosh.volume = 0.9;
     await whoosh.play();
-  } catch {
-    // ignore (si no hay whoosh o está bloqueado)
+  } catch {}
+}
+
+/* SPARKLES (DOM) */
+function spawnSparkle(x, y, scale = 1) {
+  // throttle ultra simple (para móvil)
+  if (sparkleBudget > 18) return;
+  sparkleBudget++;
+
+  const s = document.createElement("span");
+  s.textContent = Math.random() > 0.55 ? "✨" : "✦";
+  s.style.position = "absolute";
+  s.style.left = `${x}px`;
+  s.style.top = `${y}px`;
+  s.style.transform = `translate(-50%, -50%) scale(${0.8 * scale})`;
+  s.style.opacity = "0";
+  s.style.pointerEvents = "none";
+  s.style.filter = "drop-shadow(0 6px 10px rgba(255,255,255,0.35))";
+  s.style.transition = `all ${600 + Math.random()*450}ms ease-out`;
+
+  stage.appendChild(s);
+
+  const dx = (Math.random() - 0.5) * 140;
+  const dy = -70 - Math.random() * 120;
+  const rot = (Math.random() - 0.5) * 80;
+
+  requestAnimationFrame(() => {
+    s.style.opacity = "1";
+    s.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px) rotate(${rot}deg) scale(${1.1 * scale})`;
+  });
+
+  setTimeout(() => { s.style.opacity = "0"; }, 420);
+  setTimeout(() => {
+    s.remove();
+    sparkleBudget = Math.max(0, sparkleBudget - 1);
+  }, 900);
+}
+
+function sparkleBurst(centerX, centerY, count = 18) {
+  for (let i = 0; i < count; i++) {
+    spawnSparkle(centerX + (Math.random()-0.5)*20, centerY + (Math.random()-0.5)*20, 1 + Math.random()*0.5);
   }
 }
 
@@ -171,6 +218,28 @@ function buildHeartPath(w, h) {
 function hideReveal() { if (reveal) reveal.style.opacity = "0"; }
 function showReveal() { if (reveal) reveal.style.opacity = "1"; }
 
+function drawTwinkle(x, y, r, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = Math.max(1, r * 0.35);
+  ctx.strokeStyle = "rgba(255,255,255,0.98)";
+  ctx.beginPath();
+  ctx.moveTo(x - r, y);
+  ctx.lineTo(x + r, y);
+  ctx.moveTo(x, y - r);
+  ctx.lineTo(x, y + r);
+  ctx.stroke();
+
+  ctx.globalAlpha = alpha * 0.7;
+  ctx.beginPath();
+  ctx.moveTo(x - r * 0.75, y - r * 0.75);
+  ctx.lineTo(x + r * 0.75, y + r * 0.75);
+  ctx.moveTo(x - r * 0.75, y + r * 0.75);
+  ctx.lineTo(x + r * 0.75, y - r * 0.75);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawGoldHeartOverlay() {
   hideReveal();
 
@@ -184,28 +253,78 @@ function drawGoldHeartOverlay() {
   ctx.save();
   ctx.clip(hp);
 
+  // base gradient
   const g = ctx.createLinearGradient(0, 0, w, h);
   g.addColorStop(0, cssVar("--gold1", "#f6e6b6"));
   g.addColorStop(0.5, cssVar("--gold2", "#e8c97a"));
   g.addColorStop(1, cssVar("--gold3", "#caa24d"));
-
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  ctx.globalAlpha = 0.22;
-  for (let i = 0; i < 120; i++) {
-    const x = Math.random() * w;
-    const y = Math.random() * h;
-    const rr = Math.random() * 1.7 + 0.4;
-    ctx.beginPath();
-    ctx.arc(x, y, rr, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
+  // foil stripes stronger
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.translate(w * 0.12, -h * 0.08);
+  ctx.rotate(-Math.PI / 8);
 
+  for (let i = -h; i < w + h; i += 14) {
+    const grad = ctx.createLinearGradient(i, 0, i + 11, 0);
+    grad.addColorStop(0, "rgba(255,255,255,0)");
+    grad.addColorStop(0.5, "rgba(255,255,255,0.95)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(i, 0, 11, h * 1.7);
+  }
   ctx.restore();
 
+  // SUPER glitter dust
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  for (let i = 0; i < GLITTER_DUST; i++) {
+    const x = Math.random() * w;
+    const y = Math.random() * h;
+    const rr = Math.random() * 1.35 + 0.20;
+
+    ctx.beginPath();
+    ctx.arc(x, y, rr, 0, Math.PI * 2);
+    const bright = Math.random();
+    ctx.fillStyle =
+      bright > 0.82 ? "rgba(255,255,255,0.98)" :
+      bright > 0.55 ? "rgba(255,255,255,0.70)" :
+                      "rgba(255,255,255,0.35)";
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Twinkles
+  for (let i = 0; i < GLITTER_TWINKLES; i++) {
+    const x = Math.random() * w;
+    const y = Math.random() * h;
+    const rr = Math.random() * 8 + 6;
+    const a = Math.random() * 0.45 + 0.25;
+    drawTwinkle(x, y, rr, a);
+  }
+
+  // Bokeh highlights
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  for (let i = 0; i < 22; i++) {
+    const x = Math.random() * w;
+    const y = Math.random() * h;
+    const rr = Math.random() * 22 + 10;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, rr);
+    grad.addColorStop(0, "rgba(255,255,255,0.95)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, rr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.restore(); // clip
+
+  // border
   ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 3;
@@ -229,6 +348,9 @@ function scratchDot(p) {
   ctx.fill();
   ctx.restore();
   scratchUnits += 10;
+
+  // tiny sparkle on touch
+  spawnSparkle(p.x, p.y, 0.9);
 }
 
 function scratchStroke(a, b) {
@@ -248,6 +370,16 @@ function scratchStroke(a, b) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   scratchUnits += Math.sqrt(dx * dx + dy * dy) / 6;
+
+  // sparkles while scratching (very light)
+  for (let i = 0; i < SPARKLES_ON_SCRATCH; i++) {
+    const t = Math.random();
+    spawnSparkle(
+      a.x + (b.x - a.x) * t + (Math.random() - 0.5) * 10,
+      a.y + (b.y - a.y) * t + (Math.random() - 0.5) * 10,
+      0.75 + Math.random() * 0.35
+    );
+  }
 }
 
 function maybeCelebrate() {
@@ -255,33 +387,10 @@ function maybeCelebrate() {
   if (!celebrated && scratchUnits >= CELEBRATE_AFTER) {
     celebrated = true;
     hint.style.opacity = "0";
-    burstHearts();
-  }
-}
 
-function burstHearts() {
-  const container = stage;
-  const count = 12;
-  for (let i = 0; i < count; i++) {
-    const s = document.createElement("span");
-    s.textContent = Math.random() > 0.35 ? "💗" : "✨";
-    s.style.position = "absolute";
-    s.style.left = `${45 + Math.random() * 10}%`;
-    s.style.top = `${55 + Math.random() * 10}%`;
-    s.style.fontSize = `${14 + Math.random() * 16}px`;
-    s.style.opacity = "0";
-    s.style.transform = `translate(-50%,-50%) translate(${(Math.random()-0.5)*30}px, ${(Math.random()-0.5)*20}px)`;
-    s.style.transition = `all ${850 + Math.random()*650}ms ease-out`;
-    s.style.pointerEvents = "none";
-
-    container.appendChild(s);
-    requestAnimationFrame(() => {
-      s.style.opacity = "1";
-      s.style.transform = `translate(-50%,-50%) translate(${(Math.random()-0.5)*120}px, ${-90 - Math.random()*120}px)`;
-    });
-
-    setTimeout(() => { s.style.opacity = "0"; }, 850);
-    setTimeout(() => { s.remove(); }, 1500);
+    // burst from heart center
+    const r = canvas.getBoundingClientRect();
+    sparkleBurst(r.width * 0.50, r.height * 0.52, 26);
   }
 }
 
@@ -394,24 +503,19 @@ async function toStep1() {
 }
 
 async function toStep2() {
-  // blur+zoom rápido en el fondo
   intro.classList.add("step2");
 
-  // flash
   if (flash) {
     flash.classList.remove("on");
     void flash.offsetWidth;
     flash.classList.add("on");
   }
 
-  // whoosh
   await playWhoosh();
 
-  // salir
   intro.classList.add("intro-dismiss");
   setTimeout(() => { intro.style.display = "none"; }, 520);
 
-  // animación pop del corazón al entrar
   stage.classList.remove("pop");
   void stage.offsetWidth;
   stage.classList.add("pop");
@@ -425,17 +529,17 @@ function onIntroTap(e) {
 
 /* SETUP */
 function setup() {
-  // pre-dibuja el rasca detrás de la intro
+  // Pre-draw
   requestAnimationFrame(() => resetScratch());
 
-  // bind intro
+  // Intro bind
   intro.addEventListener("click", onIntroTap);
   intro.addEventListener("touchend", onIntroTap, { passive: false });
   intro.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") onIntroTap(e);
   });
 
-  // scratch
+  // Scratch bind
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
