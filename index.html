@@ -13,16 +13,20 @@
 </head>
 <body>
 
-  <!-- INTRO -->
+  <!-- INTRO (2 toques) -->
   <div id="intro" class="intro-screen" role="button" tabindex="0" aria-label="Intro. Toca para continuar">
     <div class="intro-bg" aria-hidden="true"></div>
     <div class="intro-gradient" aria-hidden="true"></div>
 
     <div class="intro-content">
-      <div class="intro-kicker">Cris &amp; Jose</div>
-      <div class="intro-msg" id="introMsg">Tenemos que compartir contigo una cosa…</div>
+      <div class="intro-kicker">Cris • Elián • Jose</div>
+
+      <!-- Estado 1 -->
+      <div class="intro-msg show" id="introMsg1">Pulsa aquí, somos Cris, Elián y Jose.</div>
+
+      <!-- Estado 2 (oculto al inicio) -->
+      <div class="intro-msg" id="introMsg2">Tenemos que compartir contigo una cosa…</div>
       <div class="intro-tap" id="introTap">Toca la pantalla</div>
-      <div class="intro-audio" id="introAudioHint">🎵 Activando música…</div>
     </div>
   </div>
 
@@ -65,8 +69,8 @@
     </section>
   </main>
 
-  <!-- AUDIO: intentamos autoplay muted para móvil/PC, y desmuteamos al primer toque -->
-  <audio id="bgm" src="assets/song.mp3" preload="auto" loop autoplay muted playsinline></audio>
+  <!-- AUDIO: sin autoplay. Arranca en el primer toque -->
+  <audio id="bgm" src="assets/song.mp3" preload="auto" loop playsinline></audio>
 
   <script src="script.js"></script>
 </body>
