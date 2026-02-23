@@ -11,9 +11,10 @@ const GLITTER_DUST = 1100;
 const GLITTER_TWINKLES = 44;
 const SPARKLES_ON_SCRATCH = 2;
 
-// SHINNY (brillo previo)
-const SHINE_PERIOD_MS = 1400;      // velocidad del barrido
-const SHINE_TWINKLES = 10;         // estrellitas animadas encima del corazón
+// SHINNY (más exagerado)
+const SHINE_PERIOD_MS = 820;        // ✅ más rápido
+const SHINE_TWINKLES = 22;          // ✅ más twinkles animados
+const SHINE_BLING_EVERY_MS = 2200;  // ✅ bling extra cada X ms
 // ======================
 
 // Intro
@@ -40,6 +41,9 @@ const ctx = canvas.getContext("2d");
 
 const shineCanvas = document.getElementById("shine");
 const shineCtx = shineCanvas.getContext("2d");
+
+const outlineCanvas = document.getElementById("outline");
+const outlineCtx = outlineCanvas.getContext("2d");
 
 const hint = document.getElementById("hint");
 const resetBtn = document.getElementById("resetBtn");
@@ -77,6 +81,10 @@ let shineActive = false;
 let shineRAF = null;
 let shineTwinkles = [];
 let lastShineTs = 0;
+let lastBlingTs = 0;
+
+// Outline state
+let outlineOn = false;
 
 function setStatus(msg) {
   if (!musicStatus) return;
@@ -205,22 +213,24 @@ function sparkleBurst(centerX, centerY, count = 18) {
   }
 }
 
-/* SCRATCH + GEOMETRY */
+/* CANVAS SIZING + HEART PATH */
 function getRect() { return stage.getBoundingClientRect(); }
 
 function fitCanvasAll() {
   const r = getRect();
   const dpr = window.devicePixelRatio || 1;
 
-  // scratch canvas
   canvas.width = Math.round(r.width * dpr);
   canvas.height = Math.round(r.height * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // shine canvas
   shineCanvas.width = Math.round(r.width * dpr);
   shineCanvas.height = Math.round(r.height * dpr);
   shineCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  outlineCanvas.width = Math.round(r.width * dpr);
+  outlineCanvas.height = Math.round(r.height * dpr);
+  outlineCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 function buildHeartPath(w, h) {
@@ -261,6 +271,7 @@ function drawTwinkleOn(ctx2d, x, y, r, alpha) {
   ctx2d.restore();
 }
 
+/* GOLD HEART DRAW */
 function drawGoldHeartOverlay() {
   hideReveal();
 
@@ -274,7 +285,6 @@ function drawGoldHeartOverlay() {
   ctx.save();
   ctx.clip(hp);
 
-  // base gradient
   const g = ctx.createLinearGradient(0, 0, w, h);
   g.addColorStop(0, cssVar("--gold1", "#f6e6b6"));
   g.addColorStop(0.5, cssVar("--gold2", "#e8c97a"));
@@ -282,7 +292,7 @@ function drawGoldHeartOverlay() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 
-  // foil stripes stronger
+  // foil stripes
   ctx.save();
   ctx.globalAlpha = 0.16;
   ctx.translate(w * 0.12, -h * 0.08);
@@ -297,7 +307,7 @@ function drawGoldHeartOverlay() {
   }
   ctx.restore();
 
-  // SUPER glitter dust
+  // dust
   ctx.save();
   ctx.globalAlpha = 0.25;
   for (let i = 0; i < GLITTER_DUST; i++) {
@@ -315,7 +325,7 @@ function drawGoldHeartOverlay() {
   }
   ctx.restore();
 
-  // Twinkles static
+  // static twinkles
   for (let i = 0; i < GLITTER_TWINKLES; i++) {
     const x = Math.random() * w;
     const y = Math.random() * h;
@@ -324,7 +334,7 @@ function drawGoldHeartOverlay() {
     drawTwinkleOn(ctx, x, y, rr, a);
   }
 
-  // Bokeh highlights
+  // bokeh
   ctx.save();
   ctx.globalAlpha = 0.12;
   for (let i = 0; i < 22; i++) {
@@ -353,22 +363,50 @@ function drawGoldHeartOverlay() {
   showReveal();
 }
 
-/* SHINNY (Pokemon shiny) */
+/* OUTLINE FINAL */
+function drawOutline() {
+  const r = getRect();
+  const w = r.width;
+  const h = r.height;
+
+  outlineCtx.clearRect(0, 0, w, h);
+
+  // brillo dorado gordito
+  const grad = outlineCtx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, cssVar("--gold1", "#f6e6b6"));
+  grad.addColorStop(0.5, cssVar("--gold2", "#e8c97a"));
+  grad.addColorStop(1, cssVar("--gold3", "#caa24d"));
+
+  outlineCtx.save();
+  outlineCtx.strokeStyle = grad;
+  outlineCtx.lineWidth = 10; // ✅ gordito
+  outlineCtx.lineJoin = "round";
+  outlineCtx.lineCap = "round";
+  outlineCtx.shadowColor = "rgba(255,255,255,0.85)";
+  outlineCtx.shadowBlur = 10;
+
+  outlineCtx.stroke(hp);
+  outlineCtx.restore();
+
+  outlineCanvas.classList.add("on");
+  outlineOn = true;
+}
+
+/* SHINNY */
 function initShineTwinkles(w, h) {
   shineTwinkles = [];
   let attempts = 0;
 
-  while (shineTwinkles.length < SHINE_TWINKLES && attempts < 500) {
+  while (shineTwinkles.length < SHINE_TWINKLES && attempts < 1200) {
     attempts++;
     const x = Math.random() * w;
     const y = Math.random() * h;
-    // usa isPointInPath sobre el contexto de shine
     if (!shineCtx.isPointInPath(hp, x, y)) continue;
 
     shineTwinkles.push({
       x, y,
-      r: 7 + Math.random() * 10,
-      speed: 0.6 + Math.random() * 1.1,
+      r: 7 + Math.random() * 12,
+      speed: 0.9 + Math.random() * 1.4,
       phase: Math.random() * Math.PI * 2
     });
   }
@@ -385,11 +423,12 @@ function startShine() {
   initShineTwinkles(r.width, r.height);
 
   lastShineTs = 0;
+  lastBlingTs = 0;
+
   const loop = (ts) => {
     if (!shineActive) return;
 
-    // limita a ~30fps para móvil
-    if (lastShineTs && ts - lastShineTs < 32) {
+    if (lastShineTs && ts - lastShineTs < 28) {
       shineRAF = requestAnimationFrame(loop);
       return;
     }
@@ -402,29 +441,27 @@ function startShine() {
     shineCtx.save();
     shineCtx.clip(hp);
 
-    // Barrido diagonal brillante (shinny)
+    // sweep más intenso + rápido
     const prog = (ts % SHINE_PERIOD_MS) / SHINE_PERIOD_MS;
-    const x0 = -w + (w * 2.2) * prog;
-    const y0 = 0;
-    const x1 = x0 + w * 0.9;
-    const y1 = h;
+    const x0 = -w + (w * 2.4) * prog;
+    const x1 = x0 + w * 1.05;
 
-    const sweep = shineCtx.createLinearGradient(x0, y0, x1, y1);
+    const sweep = shineCtx.createLinearGradient(x0, 0, x1, h);
     sweep.addColorStop(0.0, "rgba(255,255,255,0)");
-    sweep.addColorStop(0.42, "rgba(255,255,255,0)");
-    sweep.addColorStop(0.50, "rgba(255,255,255,0.75)");
+    sweep.addColorStop(0.46, "rgba(255,255,255,0)");
+    sweep.addColorStop(0.52, "rgba(255,255,255,0.92)");
     sweep.addColorStop(0.58, "rgba(255,255,255,0)");
     sweep.addColorStop(1.0, "rgba(255,255,255,0)");
 
-    shineCtx.globalAlpha = 0.65;
+    shineCtx.globalAlpha = 0.78;
     shineCtx.fillStyle = sweep;
     shineCtx.fillRect(0, 0, w, h);
 
-    // glow suave en una esquina (estilo “shine”)
-    shineCtx.globalAlpha = 0.18;
-    const gx = w * (0.25 + 0.55 * prog);
-    const gy = h * 0.30;
-    const gr = Math.min(w, h) * 0.28;
+    // glow blob fuerte
+    shineCtx.globalAlpha = 0.22;
+    const gx = w * (0.20 + 0.60 * prog);
+    const gy = h * 0.32;
+    const gr = Math.min(w, h) * 0.32;
     const blob = shineCtx.createRadialGradient(gx, gy, 0, gx, gy, gr);
     blob.addColorStop(0, "rgba(255,255,255,0.95)");
     blob.addColorStop(1, "rgba(255,255,255,0)");
@@ -433,11 +470,35 @@ function startShine() {
     shineCtx.arc(gx, gy, gr, 0, Math.PI * 2);
     shineCtx.fill();
 
-    // Twinkles animados (parpadeo)
+    // twinkles animados
     for (const t of shineTwinkles) {
       const a = Math.max(0, Math.sin(ts / 1000 * t.speed + t.phase));
-      const alpha = 0.10 + Math.pow(a, 3) * 0.55;
+      const alpha = 0.12 + Math.pow(a, 3) * 0.65;
       drawTwinkleOn(shineCtx, t.x, t.y, t.r, alpha);
+    }
+
+    // BLING extra cada X ms
+    if (ts - lastBlingTs > SHINE_BLING_EVERY_MS) {
+      lastBlingTs = ts;
+
+      // un destello grande y 2-3 twinkles muy fuertes
+      shineCtx.globalAlpha = 0.95;
+      const bx = w * (0.25 + Math.random() * 0.50);
+      const by = h * (0.28 + Math.random() * 0.48);
+      const br = Math.min(w, h) * 0.18;
+      const bl = shineCtx.createRadialGradient(bx, by, 0, bx, by, br);
+      bl.addColorStop(0, "rgba(255,255,255,1)");
+      bl.addColorStop(1, "rgba(255,255,255,0)");
+      shineCtx.fillStyle = bl;
+      shineCtx.beginPath();
+      shineCtx.arc(bx, by, br, 0, Math.PI * 2);
+      shineCtx.fill();
+
+      for (let i = 0; i < 3; i++) {
+        const tx = bx + (Math.random()-0.5) * 70;
+        const ty = by + (Math.random()-0.5) * 70;
+        drawTwinkleOn(shineCtx, tx, ty, 18 + Math.random()*10, 0.9);
+      }
     }
 
     shineCtx.restore();
@@ -453,16 +514,14 @@ function stopShine() {
   if (shineRAF) cancelAnimationFrame(shineRAF);
   shineRAF = null;
 
-  // fade out
   shineCanvas.classList.add("off");
-  // limpia tras el fade
   setTimeout(() => {
     const r = getRect();
     shineCtx.clearRect(0, 0, r.width, r.height);
   }, 320);
 }
 
-/* SCRATCH LOGIC */
+/* SCRATCH */
 function posFromClient(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
   return { x: clientX - r.left, y: clientY - r.top };
@@ -511,12 +570,16 @@ function scratchStroke(a, b) {
 
 function maybeCelebrate() {
   if (scratchUnits > 25) hint.style.opacity = "0";
+
   if (!celebrated && scratchUnits >= CELEBRATE_AFTER) {
     celebrated = true;
     hint.style.opacity = "0";
 
     const r = canvas.getBoundingClientRect();
     sparkleBurst(r.width * 0.50, r.height * 0.52, 26);
+
+    // ✅ mostrar outline dorado gordo
+    if (!outlineOn) drawOutline();
   }
 }
 
@@ -537,9 +600,7 @@ function scheduleMove(p) {
 }
 
 function startAt(p) {
-  // al primer contacto: apaga el shinny
-  stopShine();
-
+  stopShine(); // al empezar a rascar
   drawing = true;
   last = p;
   scratchDot(p);
@@ -553,7 +614,7 @@ function endDraw() {
   rafPending = false;
 }
 
-/* INPUT SCRATCH */
+/* INPUT */
 function onPointerDown(e) {
   if (touchActive) return;
   if (activePointerId !== null) return;
@@ -605,13 +666,17 @@ function resetScratch() {
   scratchUnits = 0;
   celebrated = false;
 
+  outlineOn = false;
+  outlineCanvas.classList.remove("on");
+  outlineCtx.clearRect(0, 0, getRect().width, getRect().height);
+
   hint.style.opacity = "1";
   hint.textContent = "Rasca el corazón dorado para descubrir la hora";
 
   fitCanvasAll();
   drawGoldHeartOverlay();
 
-  // vuelve el shinny cuando el corazón está “nuevo”
+  // ✅ vuelve el shiny al reset
   startShine();
 
   updateMusicBtn();
@@ -662,17 +727,14 @@ function onIntroTap(e) {
 
 /* SETUP */
 function setup() {
-  // Pre-draw behind intro
   requestAnimationFrame(() => resetScratch());
 
-  // Intro bind
   intro.addEventListener("click", onIntroTap);
   intro.addEventListener("touchend", onIntroTap, { passive: false });
   intro.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") onIntroTap(e);
   });
 
-  // Scratch bind
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
