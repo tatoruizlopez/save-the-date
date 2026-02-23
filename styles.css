@@ -289,6 +289,22 @@ h1{
   user-select:none;
 }
 
+/* Shine overlay (Pokemon shiny) */
+.heart-shine{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  opacity:1;
+  transition: opacity 260ms ease;
+  /* si el navegador soporta blend-mode, se ve aún más brillante */
+  mix-blend-mode: screen;
+}
+.heart-shine.off{
+  opacity:0;
+}
+
 .hint{
   position:absolute;
   left:12px;
