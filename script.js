@@ -10,6 +10,7 @@ const ctx = canvas.getContext("2d");
 const hint = document.getElementById("hint");
 const resetBtn = document.getElementById("resetBtn");
 const musicBtn = document.getElementById("musicBtn");
+const musicStatus = document.getElementById("musicStatus");
 const bgm = document.getElementById("bgm");
 
 document.getElementById("hora").textContent = HORA;
@@ -26,7 +27,26 @@ let touchActive = false;
 let rafPending = false;
 let pendingPoint = null;
 
-let audioStartedOnce = false;
+let audioPrimed = false;
+let statusTimer = null;
+
+function setStatus(msg) {
+  if (!musicStatus) return;
+  clearTimeout(statusTimer);
+
+  if (!msg) {
+    musicStatus.classList.remove("show");
+    musicStatus.textContent = "";
+    return;
+  }
+
+  musicStatus.textContent = msg;
+  musicStatus.classList.add("show");
+  statusTimer = setTimeout(() => {
+    musicStatus.classList.remove("show");
+    musicStatus.textContent = "";
+  }, 4500);
+}
 
 function cssVar(name, fallback) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -49,9 +69,7 @@ function fitCanvas() {
 
 function buildHeartPath(w, h) {
   const cx = w * 0.5;
-  const cy = h * 0.55;            // un pelín más abajo para tapar mejor el texto
-
-  // MÁS GRANDE aún para cubrir letras (antes 0.48)
+  const cy = h * 0.55;
   const size = Math.min(w, h) * 0.58;
 
   const p = new Path2D();
@@ -206,28 +224,54 @@ function endDraw() {
   rafPending = false;
 }
 
-// ===== Música =====
+// ===== Música (con diagnóstico) =====
 function updateMusicBtn() {
   if (!bgm || !musicBtn) return;
   musicBtn.textContent = bgm.paused ? "🎵 Música" : "🔊 Música";
 }
 
-async function tryStartMusic() {
+async function tryStartMusic(userInitiated = false) {
   if (!bgm) return;
-  if (!audioStartedOnce) {
-    audioStartedOnce = true;
+
+  if (!audioPrimed) {
+    audioPrimed = true;
+    bgm.muted = false;
     bgm.volume = 0.85;
+    try { bgm.load(); } catch {}
   }
-  try { await bgm.play(); } catch {}
+
+  try {
+    await bgm.play();
+    setStatus("");
+  } catch (err) {
+    const msg =
+      (err && err.name === "NotAllowedError")
+        ? "El navegador bloqueó el audio. Revisa: pestaña/sitio NO silenciado y permiso de sonido en el candado."
+        : "No se pudo reproducir el audio. Prueba a abrir /assets/song.mp3 y verifica que se escucha.";
+
+    if (userInitiated) setStatus(msg);
+  }
+
   updateMusicBtn();
 }
 
-musicBtn.addEventListener("click", async () => {
+musicBtn?.addEventListener("click", async () => {
   if (!bgm) return;
-  if (bgm.paused) await tryStartMusic();
-  else bgm.pause();
-  updateMusicBtn();
+
+  if (bgm.paused) {
+    await tryStartMusic(true);
+  } else {
+    bgm.pause();
+    updateMusicBtn();
+  }
 });
+
+bgm?.addEventListener("error", () => {
+  setStatus("Error cargando el audio. Comprueba que existe: /assets/song.mp3");
+});
+
+bgm?.addEventListener("play", updateMusicBtn);
+bgm?.addEventListener("pause", updateMusicBtn);
 
 // ===== Pointer + Touch fallback =====
 function onPointerDown(e) {
@@ -237,8 +281,7 @@ function onPointerDown(e) {
   activePointerId = e.pointerId;
   try { canvas.setPointerCapture(activePointerId); } catch {}
 
-  tryStartMusic();
-
+  tryStartMusic(false);
   startAt(posFromClient(e.clientX, e.clientY));
 }
 
@@ -261,7 +304,8 @@ function onPointerUp(e) {
 function onTouchStart(e) {
   touchActive = true;
   e.preventDefault();
-  tryStartMusic();
+
+  tryStartMusic(false);
 
   const t = e.touches[0];
   if (!t) return;
@@ -309,6 +353,7 @@ function reset() {
   fitCanvas();
   drawGoldHeartOverlay();
   updateMusicBtn();
+  setStatus("");
 }
 
 reset();
